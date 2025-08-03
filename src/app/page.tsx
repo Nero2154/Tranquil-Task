@@ -353,7 +353,9 @@ export default function Home() {
         <SidebarHeader>
             <div className="flex items-center gap-2">
                 <Logo className="h-8 w-8 text-primary" />
-                <h1 className="text-2xl font-bold font-headline">{t.appName}</h1>
+                <div className="group-data-[collapsible=icon]:hidden">
+                    <h1 className="text-2xl font-bold font-headline">{t.appName}</h1>
+                </div>
             </div>
         </SidebarHeader>
         <SidebarContent>
@@ -361,11 +363,11 @@ export default function Home() {
              <SidebarMenuItem>
                 <SidebarMenuButton>
                     <Settings className="mr-2 h-5 w-5" />
-                    {t.settings}
+                    <span className="group-data-[collapsible=icon]:hidden">{t.settings}</span>
                 </SidebarMenuButton>
              </SidebarMenuItem>
             </SidebarMenu>
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 group-data-[collapsible=icon]:hidden">
                 <div>
                     <Label htmlFor="language-select">{t.language}</Label>
                     <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
@@ -400,11 +402,11 @@ export default function Home() {
         </SidebarContent>
         <SidebarFooter>
             <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-              <DialogTrigger asChild><Button className="w-full"><Plus className="mr-2 h-4 w-4" />{t.addTask}</Button></DialogTrigger>
+              <DialogTrigger asChild><Button className="w-full"><Plus className="mr-2 h-4 w-4" /> <span className="group-data-[collapsible=icon]:hidden">{t.addTask}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{t.addNewTask}</DialogTitle></DialogHeader><TaskForm onFinished={handleTaskFormSubmit} /></DialogContent>
             </Dialog>
             <Dialog open={isAlarmDialogOpen} onOpenChange={setIsAlarmDialogOpen}>
-              <DialogTrigger asChild><Button variant="secondary" className="w-full"><Bell className="mr-2 h-4 w-4" />{t.addAlarm}</Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="secondary" className="w-full"><Bell className="mr-2 h-4 w-4" /> <span className="group-data-[collapsible=icon]:hidden">{t.addAlarm}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{t.setNewAlarm}</DialogTitle></DialogHeader><AlarmForm onFinished={handleAlarmFormSubmit} /></DialogContent>
             </Dialog>
         </SidebarFooter>
@@ -419,58 +421,62 @@ export default function Home() {
               <SidebarTrigger />
           </header>
           
-          <main className="container mx-auto p-4 grid md:grid-cols-3 gap-8">
-            <div className="md:col-span-2">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle>{t.dailyTimeline}</CardTitle>
-                    <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading}>
-                      <CloudLightning className="mr-2 h-4 w-4" />{isLoading ? t.prioritizing : t.prioritizeWithAI}
-                    </Button>
-                  </div>
-                  <CardDescription>{t.todayTasksDescription}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="active">
-                    <TabsList>
-                      <TabsTrigger value="active">{t.active} ({todayTasks.length})</TabsTrigger>
-                      <TabsTrigger value="completed">{t.completed} ({completedTasks.length})</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="active" className="mt-4 space-y-2">
-                      {todayTasks.length > 0 ? todayTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noTasksForToday}</p>}
-                    </TabsContent>
-                    <TabsContent value="completed" className="mt-4 space-y-2">
-                      {completedTasks.length > 0 ? completedTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noCompletedTasks}</p>}
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t.alarms}</CardTitle>
-                  <CardDescription>{t.upcomingAlarms}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {alarms.length > 0 ? alarms.map(alarm => (
-                    <div key={alarm.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                      <div>
-                        <p className="font-medium">{alarm.description}</p>
-                        <p className="text-sm text-muted-foreground">{alarm.time}</p>
-                      </div>
-                      <div className="flex items-center">
-                        <Music className="h-4 w-4 text-muted-foreground mr-2" />
-                        <Button variant="ghost" size="icon" onClick={() => setAlarms(alarms.filter(a => a.id !== alarm.id))}>
-                          <Check className="h-4 w-4 text-green-500" />
+          <main className="container mx-auto p-4 md:p-8">
+            <div className="grid lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                        <div>
+                          <CardTitle>{t.dailyTimeline}</CardTitle>
+                          <CardDescription>{t.todayTasksDescription}</CardDescription>
+                        </div>
+                        <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading} className="w-full sm:w-auto">
+                          <CloudLightning className="mr-2 h-4 w-4" />{isLoading ? t.prioritizing : t.prioritizeWithAI}
                         </Button>
                       </div>
-                    </div>
-                  )) : <p className="text-muted-foreground text-center">{t.noAlarmsSet}</p>}
-                </CardContent>
-              </Card>
+                    </CardHeader>
+                    <CardContent>
+                      <Tabs defaultValue="active">
+                        <TabsList>
+                          <TabsTrigger value="active">{t.active} ({todayTasks.length})</TabsTrigger>
+                          <TabsTrigger value="completed">{t.completed} ({completedTasks.length})</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="active" className="mt-4 space-y-2">
+                          {todayTasks.length > 0 ? todayTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noTasksForToday}</p>}
+                        </TabsContent>
+                        <TabsContent value="completed" className="mt-4 space-y-2">
+                          {completedTasks.length > 0 ? completedTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noCompletedTasks}</p>}
+                        </TabsContent>
+                      </Tabs>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>{t.alarms}</CardTitle>
+                      <CardDescription>{t.upcomingAlarms}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {alarms.length > 0 ? alarms.map(alarm => (
+                        <div key={alarm.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                          <div>
+                            <p className="font-medium">{alarm.description}</p>
+                            <p className="text-sm text-muted-foreground">{alarm.time}</p>
+                          </div>
+                          <div className="flex items-center">
+                            <Music className="h-4 w-4 text-muted-foreground mr-2" />
+                            <Button variant="ghost" size="icon" onClick={() => setAlarms(alarms.filter(a => a.id !== alarm.id))}>
+                              <Check className="h-4 w-4 text-green-500" />
+                            </Button>
+                          </div>
+                        </div>
+                      )) : <p className="text-muted-foreground text-center">{t.noAlarmsSet}</p>}
+                    </CardContent>
+                  </Card>
+                </div>
             </div>
           </main>
           
