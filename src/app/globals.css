@@ -85,3 +85,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+    .themed-card {
+        @apply bg-card text-card-foreground;
+    }
+}

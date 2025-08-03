@@ -453,7 +453,7 @@ export default function Home() {
       <main className="container mx-auto p-4 md:p-8">
         <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <Card>
+              <Card className="themed-card">
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <div>
@@ -483,7 +483,7 @@ export default function Home() {
             </div>
             
             <div>
-              <Card>
+              <Card className="themed-card">
                 <CardHeader>
                   <CardTitle>{t.alarms}</CardTitle>
                   <CardDescription>{t.upcomingAlarms}</CardDescription>
