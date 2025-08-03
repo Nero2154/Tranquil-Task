@@ -1,1 +1,6 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/motivate-task-completion.ts';
+import '@/ai/flows/prioritize-tasks.ts';
+import '@/ai/flows/sarcastic-alarm-snooze.ts';
