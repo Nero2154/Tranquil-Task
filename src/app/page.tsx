@@ -99,11 +99,11 @@ const alarmSchema = z.object({
 });
 
 const themeColors: { name: ThemeColor; value: string }[] = [
-    { name: "default", value: "216 84% 75%" },
-    { name: "stone", value: "35 85% 75%" },
-    { name: "red", value: "0 90% 80%" },
-    { name: "green", value: "142 70% 78%" },
-    { name: "blue", value: "221 90% 80%" },
+    { name: "default", value: "216 44% 56%" },
+    { name: "stone", value: "35 85% 65%" },
+    { name: "red", value: "0 90% 70%" },
+    { name: "green", value: "142 70% 68%" },
+    { name: "blue", value: "221 90% 70%" },
 ];
 
 export default function Home() {
@@ -377,11 +377,11 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-              <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" /> <span>{t.addTask}</span></Button></DialogTrigger>
+              <DialogTrigger asChild><Button className="shadow-lg"><Plus className="mr-2 h-4 w-4" /> <span>{t.addTask}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{t.addNewTask}</DialogTitle></DialogHeader><TaskForm onFinished={handleTaskFormSubmit} /></DialogContent>
             </Dialog>
             <Dialog open={isAlarmDialogOpen} onOpenChange={setIsAlarmDialogOpen}>
-              <DialogTrigger asChild><Button variant="secondary"><Bell className="mr-2 h-4 w-4" /> <span>{t.addAlarm}</span></Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="secondary" className="shadow-lg"><Bell className="mr-2 h-4 w-4" /> <span>{t.addAlarm}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{t.setNewAlarm}</DialogTitle></DialogHeader><AlarmForm onFinished={handleAlarmFormSubmit} /></DialogContent>
             </Dialog>
 
@@ -436,13 +436,13 @@ export default function Home() {
         <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <Card>
-                <CardHeader className="bg-primary text-primary-foreground rounded-t-lg">
+                <CardHeader>
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <div>
-                      <CardTitle className="text-primary-foreground">{t.dailyTimeline}</CardTitle>
-                      <CardDescription className="text-primary-foreground/80">{t.todayTasksDescription}</CardDescription>
+                      <CardTitle>{t.dailyTimeline}</CardTitle>
+                      <CardDescription>{t.todayTasksDescription}</CardDescription>
                     </div>
-                    <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading} className="w-full sm:w-auto">
+                    <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading} className="w-full sm:w-auto shadow-lg">
                       <CloudLightning className="mr-2 h-4 w-4" />{isLoading ? t.prioritizing : t.prioritizeWithAI}
                     </Button>
                   </div>
@@ -466,9 +466,9 @@ export default function Home() {
             
             <div>
               <Card>
-                <CardHeader className="bg-primary text-primary-foreground rounded-t-lg">
-                  <CardTitle className="text-primary-foreground">{t.alarms}</CardTitle>
-                  <CardDescription className="text-primary-foreground/80">{t.upcomingAlarms}</CardDescription>
+                <CardHeader>
+                  <CardTitle>{t.alarms}</CardTitle>
+                  <CardDescription>{t.upcomingAlarms}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-6">
                   {alarms.length > 0 ? alarms.map(alarm => (
