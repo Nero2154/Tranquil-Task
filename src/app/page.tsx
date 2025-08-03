@@ -101,12 +101,12 @@ const alarmSchema = z.object({
   sound: z.enum(["classic", "digital", "chime"]),
 });
 
-const themeColors: { name: ThemeColor; value: string }[] = [
-    { name: "default", value: "221 83% 63%" },
-    { name: "stone", value: "40 85% 65%" },
-    { name: "red", value: "0 84% 65%" },
-    { name: "green", value: "142 76% 50%" },
-    { name: "blue", value: "262 83% 72%" },
+const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
+    { name: "default", value: "216 44% 66%", foreground: "210 40% 98%" },
+    { name: "stone", value: "40 85% 65%", foreground: "40 85% 10%" },
+    { name: "red", value: "0 84% 65%", foreground: "0 84% 98%" },
+    { name: "green", value: "142 76% 50%", foreground: "142 76% 98%" },
+    { name: "blue", value: "262 83% 72%", foreground: "262 83% 98%" },
 ];
 
 export default function Home() {
@@ -143,9 +143,10 @@ export default function Home() {
       root.classList.remove('light', 'dark');
       root.classList.add(themeMode);
 
-      const selectedColor = themeColors.find(c => c.name === theme)?.value;
+      const selectedColor = themeColors.find(c => c.name === theme);
       if (selectedColor) {
-        root.style.setProperty('--primary', selectedColor);
+        root.style.setProperty('--primary', selectedColor.value);
+        root.style.setProperty('--primary-foreground', selectedColor.foreground);
       }
     }
   }, [theme, themeMode, isMounted]);
@@ -331,7 +332,7 @@ export default function Home() {
           )} />
           <FormField control={form.control} name="sound" render={({ field }) => (
             <FormItem><FormLabel>{t.alarmSound}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValuechange={field.onChange} defaultValue={field.value}>
                 <FormControl><SelectTrigger><SelectValue placeholder={t.selectAlarmSound} /></SelectTrigger></FormControl>
                 <SelectContent>
                   <SelectItem value="classic">{t.classic}</SelectItem>
@@ -525,5 +526,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
