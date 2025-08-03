@@ -436,11 +436,11 @@ export default function Home() {
         <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <Card>
-                <CardHeader>
+                <CardHeader className="bg-primary text-primary-foreground rounded-t-lg">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <div>
-                      <CardTitle>{t.dailyTimeline}</CardTitle>
-                      <CardDescription>{t.todayTasksDescription}</CardDescription>
+                      <CardTitle className="text-primary-foreground">{t.dailyTimeline}</CardTitle>
+                      <CardDescription className="text-primary-foreground/80">{t.todayTasksDescription}</CardDescription>
                     </div>
                     <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading} className="w-full sm:w-auto">
                       <CloudLightning className="mr-2 h-4 w-4" />{isLoading ? t.prioritizing : t.prioritizeWithAI}
@@ -466,11 +466,11 @@ export default function Home() {
             
             <div>
               <Card>
-                <CardHeader>
-                  <CardTitle>{t.alarms}</CardTitle>
-                  <CardDescription>{t.upcomingAlarms}</CardDescription>
+                <CardHeader className="bg-primary text-primary-foreground rounded-t-lg">
+                  <CardTitle className="text-primary-foreground">{t.alarms}</CardTitle>
+                  <CardDescription className="text-primary-foreground/80">{t.upcomingAlarms}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-6">
                   {alarms.length > 0 ? alarms.map(alarm => (
                     <div key={alarm.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                       <div>
