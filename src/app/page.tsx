@@ -15,6 +15,8 @@ import {
   Settings,
   Palette,
   Music,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,6 +86,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 
 const taskSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -100,15 +103,16 @@ const alarmSchema = z.object({
 
 const themeColors: { name: ThemeColor; value: string }[] = [
     { name: "default", value: "221 83% 63%" },
-    { name: "stone", value: "39 90% 61%" },
+    { name: "stone", value: "40 85% 65%" },
     { name: "red", value: "0 84% 65%" },
-    { name: "green", value: "142 76% 46%" },
-    { name: "blue", value: "262 83% 68%" },
+    { name: "green", value: "142 76% 50%" },
+    { name: "blue", value: "262 83% 72%" },
 ];
 
 export default function Home() {
   const [language, setLanguage] = useLocalStorage<Language>("language", "english");
   const [theme, setTheme] = useLocalStorage<ThemeColor>("theme", "default");
+  const [themeMode, setThemeMode] = useLocalStorage<"light" | "dark">("themeMode", "light");
   const t = translations[language];
 
   const [tasks, setTasks] = useLocalStorage<Task[]>("tasks", []);
@@ -135,16 +139,16 @@ export default function Home() {
 
   useEffect(() => {
     if (isMounted) {
-      document.body.classList.remove(...themeColors.map(c => `theme-${c.name}`));
-      if (theme !== 'default') {
-        document.body.classList.add(`theme-${theme}`);
-      }
+      const root = window.document.documentElement;
+      root.classList.remove('light', 'dark');
+      root.classList.add(themeMode);
+
       const selectedColor = themeColors.find(c => c.name === theme)?.value;
       if (selectedColor) {
-        document.documentElement.style.setProperty('--primary-hsl', selectedColor);
+        root.style.setProperty('--primary', selectedColor);
       }
     }
-  }, [theme, isMounted]);
+  }, [theme, themeMode, isMounted]);
 
   const handleTaskFormSubmit = (values: z.infer<typeof taskSchema>) => {
     const newTask: Task = {
@@ -427,6 +431,17 @@ export default function Home() {
                             ))}
                         </div>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="dark-mode-switch" className="flex items-center gap-2">
+                         {themeMode === 'dark' ? <Moon/> : <Sun />}
+                         <span>{t.darkMode}</span>
+                      </Label>
+                      <Switch 
+                        id="dark-mode-switch"
+                        checked={themeMode === 'dark'}
+                        onCheckedChange={(checked) => setThemeMode(checked ? 'dark' : 'light')}
+                      />
+                    </div>
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -510,3 +525,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

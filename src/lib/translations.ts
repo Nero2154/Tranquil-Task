@@ -50,6 +50,7 @@ type Translation = {
   classic: string;
   digital: string;
   chime: string;
+  darkMode: string;
 };
 
 export const translations: Record<Language, Translation> = {
@@ -103,6 +104,7 @@ export const translations: Record<Language, Translation> = {
     classic: "Classic",
     digital: "Digital",
     chime: "Chime",
+    darkMode: "Dark Mode",
   },
   hinglish: {
     appName: "Tranquil Task",
@@ -154,5 +156,8 @@ export const translations: Record<Language, Translation> = {
     classic: "Classic",
     digital: "Digital",
     chime: "Chime",
+    darkMode: "Dark Mode",
   },
 };
+
+    
