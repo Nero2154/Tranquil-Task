@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -112,6 +113,11 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => (a.priorityScore || 0) - (b.priorityScore || 0) || new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
   }, [tasks]);
@@ -121,11 +127,13 @@ export default function Home() {
   const todayTasks = activeTasks.filter(task => isToday(parseISO(task.deadline)));
 
   useEffect(() => {
-    const selectedColor = themeColors.find(c => c.name === theme)?.value;
-    if (selectedColor) {
-      document.documentElement.style.setProperty('--primary', selectedColor);
+    if (isMounted) {
+      const selectedColor = themeColors.find(c => c.name === theme)?.value;
+      if (selectedColor) {
+        document.documentElement.style.setProperty('--primary', selectedColor);
+      }
     }
-  }, [theme]);
+  }, [theme, isMounted]);
 
   const handleTaskFormSubmit = (values: z.infer<typeof taskSchema>) => {
     const newTask: Task = {
@@ -195,7 +203,7 @@ export default function Home() {
       const updatedTasks = tasks.map(task => {
         const pTask = prioritizedMap.get(task.name);
         if (pTask) {
-          return { ...task, priorityScore: pTask.score, reasoning: pTask.reasoning };
+          return { ...task, priorityScore: pTask.score, reasoning: p.reasoning };
         }
         return task;
       });
@@ -346,6 +354,10 @@ export default function Home() {
       </div>
     </div>
   );
+
+  if (!isMounted) {
+    return null; // or a loading spinner
+  }
 
   return (
     <SidebarProvider>
@@ -499,3 +511,5 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+
+    
