@@ -18,6 +18,7 @@ export interface Alarm {
   description: string;
   time: string; // HH:mm
   sound: AlarmSound;
+  customSoundDataUri?: string;
 }
 
 export type Language = "english" | "hinglish";

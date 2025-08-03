@@ -44,6 +44,10 @@ const sarcasticAlarmSnoozeFlow = ai.defineFlow(
   async input => {
     const {text} = await prompt(input);
 
+    if (!text) {
+        throw new Error("The AI didn't return a joke.");
+    }
+
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.5-flash-preview-tts',
       config: {
@@ -54,7 +58,7 @@ const sarcasticAlarmSnoozeFlow = ai.defineFlow(
           },
         },
       },
-      prompt: text!,
+      prompt: text,
     });
 
     if (!media) {

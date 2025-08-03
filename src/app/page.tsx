@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, isToday, parseISO } from "date-fns";
+import { format, isToday, parseISO, addMinutes } from "date-fns";
 import {
   Bell,
   Check,
@@ -17,6 +17,7 @@ import {
   Music,
   Moon,
   Sun,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -99,6 +100,7 @@ const alarmSchema = z.object({
   description: z.string().min(1, "Description is required"),
   time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
   sound: z.enum(["classic", "digital", "chime"]),
+  customSoundDataUri: z.string().optional(),
 });
 
 const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
@@ -123,10 +125,12 @@ export default function Home() {
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
+    audioRef.current = new Audio();
   }, []);
 
   const sortedTasks = useMemo(() => {
@@ -235,22 +239,70 @@ export default function Home() {
       setIsLoading(false);
     }
   };
+  
+  const stopAlarmSound = () => {
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+    }
+  };
 
-  const handleSnooze = async () => {
+  const handleSnooze = async (minutes: number) => {
     if(!activeAlarm) return;
+    stopAlarmSound();
+    
+    const snoozedTime = addMinutes(new Date(), minutes);
+    const newAlarmTime = format(snoozedTime, 'HH:mm');
+
+    const snoozedAlarm: Alarm = {
+        ...activeAlarm,
+        id: Date.now().toString(),
+        time: newAlarmTime,
+        description: `${activeAlarm.description} (Snoozed)`
+    };
+
+    setAlarms([...alarms, snoozedAlarm]);
+    setActiveAlarm(null);
+
+    toast({
+        title: `Alarm Snoozed for ${minutes} minutes`,
+        description: `Will ring again at ${newAlarmTime}`
+    });
+
     setIsLoading(true);
     try {
       const res = await sarcasticAlarmSnooze({ alarmDescription: `${activeAlarm.description} (in ${language})`});
-      const audio = new Audio(res.audio);
-      audio.play();
+      if (audioRef.current) {
+        audioRef.current.src = res.audio;
+        audioRef.current.play();
+      }
     } catch (error) {
        console.error("Snooze AI error:", error);
        toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
     } finally {
       setIsLoading(false);
-      setActiveAlarm(null);
     }
   };
+
+  const playAlarmSound = (alarm: Alarm) => {
+    if (!audioRef.current) return;
+    
+    let soundSrc = '';
+    if (alarm.customSoundDataUri) {
+      soundSrc = alarm.customSoundDataUri;
+    } else {
+        // Placeholder for preset sounds
+        console.log(`Playing preset sound: ${alarm.sound}`);
+        // In a real app, you would have URLs to preset sound files.
+        // e.g., soundSrc = `/sounds/${alarm.sound}.mp3`;
+        // For now, we will not play any sound for presets.
+        return;
+    }
+    
+    audioRef.current.src = soundSrc;
+    audioRef.current.loop = true;
+    audioRef.current.play().catch(e => console.error("Error playing sound:", e));
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -258,9 +310,7 @@ export default function Home() {
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const dueAlarm = alarms.find(alarm => alarm.time === currentTime);
       if(dueAlarm) {
-        // Here you would play the alarm sound `dueAlarm.sound`
-        // For this prototype, we'll just log it.
-        console.log(`Playing alarm sound: ${dueAlarm.sound}`);
+        playAlarmSound(dueAlarm);
         setActiveAlarm(dueAlarm);
         setAlarms(alarms.filter(a => a.id !== dueAlarm.id));
       }
@@ -319,8 +369,24 @@ export default function Home() {
   const AlarmForm = ({ onFinished }: { onFinished: (values: z.infer<typeof alarmSchema>) => void }) => {
     const form = useForm<z.infer<typeof alarmSchema>>({
       resolver: zodResolver(alarmSchema),
-      defaultValues: { description: "", time: "", sound: "classic"},
+      defaultValues: { description: "", time: "", sound: "classic", customSoundDataUri: ""},
     });
+    const [fileName, setFileName] = useState("");
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const dataUri = event.target?.result as string;
+                form.setValue('customSoundDataUri', dataUri);
+                setFileName(file.name);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+
     return (
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onFinished)} className="space-y-4">
@@ -332,7 +398,7 @@ export default function Home() {
           )} />
           <FormField control={form.control} name="sound" render={({ field }) => (
             <FormItem><FormLabel>{t.alarmSound}</FormLabel>
-              <Select onValuechange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl><SelectTrigger><SelectValue placeholder={t.selectAlarmSound} /></SelectTrigger></FormControl>
                 <SelectContent>
                   <SelectItem value="classic">{t.classic}</SelectItem>
@@ -342,6 +408,27 @@ export default function Home() {
               </Select><FormMessage />
             </FormItem>
           )} />
+           <FormItem>
+                <FormLabel>{t.customSound}</FormLabel>
+                <FormControl>
+                    <div className="relative">
+                        <Input
+                            type="file"
+                            id="customSound"
+                            accept="audio/*"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                         <Button asChild variant="outline" className="w-full">
+                            <div>
+                                <Upload className="mr-2 h-4 w-4" />
+                                <span>{fileName || t.uploadSound}</span>
+                            </div>
+                        </Button>
+                    </div>
+                </FormControl>
+                <FormMessage />
+            </FormItem>
           <DialogFooter><Button type="submit">{t.setAlarm}</Button></DialogFooter>
         </form>
       </Form>
@@ -496,7 +583,16 @@ export default function Home() {
                         <p className="text-sm text-muted-foreground">{alarm.time}</p>
                       </div>
                       <div className="flex items-center">
-                        <Music className="h-4 w-4 text-muted-foreground mr-2" />
+                         <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                    <Music className="h-4 w-4 text-muted-foreground mr-2" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{alarm.customSoundDataUri ? "Custom Sound" : alarm.sound}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         <Button variant="ghost" size="icon" onClick={() => setAlarms(alarms.filter(a => a.id !== alarm.id))}>
                           <Check className="h-4 w-4 text-green-500" />
                         </Button>
@@ -518,8 +614,12 @@ export default function Home() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setActiveAlarm(null)}>{t.dismiss}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSnooze} disabled={isLoading}>{isLoading ? t.snoozing : t.snooze}</AlertDialogAction>
+             <Button variant="outline" onClick={() => { stopAlarmSound(); setActiveAlarm(null); }}>{t.dismiss}</Button>
+             <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={() => handleSnooze(5)} disabled={isLoading}>{t.snooze} 5 min</Button>
+                <Button onClick={() => handleSnooze(10)} disabled={isLoading}>{t.snooze} 10 min</Button>
+                <Button onClick={() => handleSnooze(15)} disabled={isLoading}>{t.snooze} 15 min</Button>
+             </div>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

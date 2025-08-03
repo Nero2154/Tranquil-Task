@@ -14,7 +14,7 @@ type Translation = {
   selectPriority: string;
   low: string;
   medium: string;
-  high: string;
+  high:string;
   alarmDescription: string;
   time: string;
   setAlarm: string;
@@ -51,6 +51,8 @@ type Translation = {
   digital: string;
   chime: string;
   darkMode: string;
+  customSound: string;
+  uploadSound: string;
 };
 
 export const translations: Record<Language, Translation> = {
@@ -105,6 +107,8 @@ export const translations: Record<Language, Translation> = {
     digital: "Digital",
     chime: "Chime",
     darkMode: "Dark Mode",
+    customSound: "Custom Sound",
+    uploadSound: "Upload a sound file",
   },
   hinglish: {
     appName: "Tranquil Task",
@@ -157,7 +161,7 @@ export const translations: Record<Language, Translation> = {
     digital: "Digital",
     chime: "Chime",
     darkMode: "Dark Mode",
+    customSound: "Apni aawaz",
+    uploadSound: "Sound file upload karein",
   },
 };
-
-    
