@@ -99,11 +99,11 @@ const alarmSchema = z.object({
 });
 
 const themeColors: { name: ThemeColor; value: string }[] = [
-    { name: "default", value: "216 84% 85%" },
-    { name: "stone", value: "35 85% 85%" },
-    { name: "red", value: "0 90% 88%" },
-    { name: "green", value: "142 70% 85%" },
-    { name: "blue", value: "221 90% 88%" },
+    { name: "default", value: "216 84% 75%" },
+    { name: "stone", value: "35 85% 75%" },
+    { name: "red", value: "0 90% 80%" },
+    { name: "green", value: "142 70% 78%" },
+    { name: "blue", value: "221 90% 80%" },
 ];
 
 export default function Home() {
@@ -508,3 +508,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
