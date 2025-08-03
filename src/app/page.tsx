@@ -99,11 +99,11 @@ const alarmSchema = z.object({
 });
 
 const themeColors: { name: ThemeColor; value: string }[] = [
-    { name: "default", value: "216 44% 56%" },
-    { name: "stone", value: "35 85% 65%" },
-    { name: "red", value: "0 90% 70%" },
-    { name: "green", value: "142 70% 68%" },
-    { name: "blue", value: "221 90% 70%" },
+  { name: "default", value: "221 83% 53%" }, // Blue
+  { name: "stone", value: "25 95% 53%" },   // Orange
+  { name: "red", value: "0 84% 60%" },     // Red
+  { name: "green", value: "142 76% 36%" }, // Green
+  { name: "blue", value: "262 83% 58%" }, // Purple
 ];
 
 export default function Home() {
@@ -139,7 +139,7 @@ export default function Home() {
       document.body.classList.add(`theme-${theme}`);
       const selectedColor = themeColors.find(c => c.name === theme)?.value;
       if (selectedColor) {
-        document.documentElement.style.setProperty('--primary', selectedColor);
+        document.documentElement.style.setProperty('--primary-hsl', selectedColor);
       }
     }
   }, [theme, isMounted]);
@@ -387,7 +387,7 @@ export default function Home() {
 
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" className="shadow-lg">
                   <Settings className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -508,5 +508,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
