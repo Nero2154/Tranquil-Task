@@ -99,11 +99,11 @@ const alarmSchema = z.object({
 });
 
 const themeColors: { name: ThemeColor; value: string }[] = [
-  { name: "default", value: "221 83% 53%" }, // Blue
-  { name: "stone", value: "25 95% 53%" },   // Orange
-  { name: "red", value: "0 84% 60%" },     // Red
-  { name: "green", value: "142 76% 36%" }, // Green
-  { name: "blue", value: "262 83% 58%" }, // Purple
+    { name: "default", value: "221 83% 63%" },
+    { name: "stone", value: "39 90% 61%" },
+    { name: "red", value: "0 84% 65%" },
+    { name: "green", value: "142 76% 46%" },
+    { name: "blue", value: "262 83% 68%" },
 ];
 
 export default function Home() {
@@ -136,7 +136,9 @@ export default function Home() {
   useEffect(() => {
     if (isMounted) {
       document.body.classList.remove(...themeColors.map(c => `theme-${c.name}`));
-      document.body.classList.add(`theme-${theme}`);
+      if (theme !== 'default') {
+        document.body.classList.add(`theme-${theme}`);
+      }
       const selectedColor = themeColors.find(c => c.name === theme)?.value;
       if (selectedColor) {
         document.documentElement.style.setProperty('--primary-hsl', selectedColor);
@@ -373,15 +375,15 @@ export default function Home() {
       <header className="p-4 border-b flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-sm z-10">
           <div className="flex items-center gap-2">
             <Logo className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold font-headline">{t.appName}</h1>
+            <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
             <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-              <DialogTrigger asChild><Button className="shadow-lg"><Plus className="mr-2 h-4 w-4" /> <span>{t.addTask}</span></Button></DialogTrigger>
+              <DialogTrigger asChild><Button className="shadow-lg"><Plus className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t.addTask}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{t.addNewTask}</DialogTitle></DialogHeader><TaskForm onFinished={handleTaskFormSubmit} /></DialogContent>
             </Dialog>
             <Dialog open={isAlarmDialogOpen} onOpenChange={setIsAlarmDialogOpen}>
-              <DialogTrigger asChild><Button variant="secondary" className="shadow-lg"><Bell className="mr-2 h-4 w-4" /> <span>{t.addAlarm}</span></Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="secondary" className="shadow-lg"><Bell className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t.addAlarm}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{t.setNewAlarm}</DialogTitle></DialogHeader><AlarmForm onFinished={handleAlarmFormSubmit} /></DialogContent>
             </Dialog>
 
