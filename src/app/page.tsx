@@ -227,7 +227,7 @@ export default function Home() {
   const TaskForm = ({ onFinished }: { onFinished: (values: z.infer<typeof taskSchema>) => void }) => {
     const form = useForm<z.infer<typeof taskSchema>>({
       resolver: zodResolver(taskSchema),
-      defaultValues: { priority: "Medium", deadline: new Date() },
+      defaultValues: { name: "", description: "", priority: "Medium", deadline: new Date() },
     });
     return (
       <Form {...form}>
@@ -275,6 +275,7 @@ export default function Home() {
   const AlarmForm = ({ onFinished }: { onFinished: (values: z.infer<typeof alarmSchema>) => void }) => {
     const form = useForm<z.infer<typeof alarmSchema>>({
       resolver: zodResolver(alarmSchema),
+      defaultValues: { description: "", time: "" },
     });
     return (
       <Form {...form}>
