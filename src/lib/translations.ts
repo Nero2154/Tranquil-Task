@@ -42,6 +42,14 @@ type Translation = {
   toastPrioritizedDescription: string;
   errorAITitle: string;
   errorAIDescription: string;
+  settings: string;
+  language: string;
+  themeColor: string;
+  alarmSound: string;
+  selectAlarmSound: string;
+  classic: string;
+  digital: string;
+  chime: string;
 };
 
 export const translations: Record<Language, Translation> = {
@@ -87,6 +95,14 @@ export const translations: Record<Language, Translation> = {
     toastPrioritizedDescription: "Check the new order of your tasks.",
     errorAITitle: "AI Error",
     errorAIDescription: "The AI service is currently unavailable. Please try again later.",
+    settings: "Settings",
+    language: "Language",
+    themeColor: "Theme Color",
+    alarmSound: "Alarm Sound",
+    selectAlarmSound: "Select a sound",
+    classic: "Classic",
+    digital: "Digital",
+    chime: "Chime",
   },
   hinglish: {
     appName: "Tranquil Task",
@@ -130,5 +146,13 @@ export const translations: Record<Language, Translation> = {
     toastPrioritizedDescription: "Apne tasks ka naya kram dekhein.",
     errorAITitle: "AI Error",
     errorAIDescription: "AI seva abhi uplabdh nahi hai. Kripya baad mein prayas karein.",
+    settings: "Settings",
+    language: "Bhasha",
+    themeColor: "Theme ka Rang",
+    alarmSound: "Alarm ki aawaz",
+    selectAlarmSound: "Aawaz chuno",
+    classic: "Classic",
+    digital: "Digital",
+    chime: "Chime",
   },
 };

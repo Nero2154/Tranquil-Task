@@ -11,10 +11,15 @@ export interface Task {
   reasoning?: string;
 }
 
+export type AlarmSound = "classic" | "digital" | "chime";
+
 export interface Alarm {
   id: string;
   description: string;
   time: string; // HH:mm
+  sound: AlarmSound;
 }
 
 export type Language = "english" | "hinglish";
+
+export type ThemeColor = "default" | "stone" | "red" | "green" | "blue";

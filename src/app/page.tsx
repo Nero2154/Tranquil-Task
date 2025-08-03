@@ -6,15 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, isToday, parseISO } from "date-fns";
 import {
-  AlertCircle,
   Bell,
   Check,
-  ChevronDown,
-  ChevronUp,
   CloudLightning,
   Plus,
-  Rocket,
   Info,
+  Settings,
+  Palette,
+  Music,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +31,6 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -53,7 +51,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import type { Task, Alarm, Language } from "@/lib/types";
+import type { Task, Alarm, Language, ThemeColor, AlarmSound } from "@/lib/types";
 import { translations } from "@/lib/translations";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { prioritizeTasks } from "@/ai/flows/prioritize-tasks";
@@ -76,6 +74,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Logo } from "@/components/icons";
+import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarInset, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { Label } from "@/components/ui/label";
 
 const taskSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -87,10 +87,20 @@ const taskSchema = z.object({
 const alarmSchema = z.object({
   description: z.string().min(1, "Description is required"),
   time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
+  sound: z.enum(["classic", "digital", "chime"]),
 });
+
+const themeColors: { name: ThemeColor, value: string }[] = [
+    { name: "default", value: "216 44% 66%" },
+    { name: "stone", value: "25 95% 53%" },
+    { name: "red", value: "0 72% 51%" },
+    { name: "green", value: "142 76% 36%" },
+    { name: "blue", value: "221 83% 53%" },
+];
 
 export default function Home() {
   const [language, setLanguage] = useLocalStorage<Language>("language", "english");
+  const [theme, setTheme] = useLocalStorage<ThemeColor>("theme", "default");
   const t = translations[language];
 
   const [tasks, setTasks] = useLocalStorage<Task[]>("tasks", []);
@@ -109,6 +119,13 @@ export default function Home() {
   const activeTasks = sortedTasks.filter((task) => !task.completed);
   const completedTasks = sortedTasks.filter((task) => task.completed);
   const todayTasks = activeTasks.filter(task => isToday(parseISO(task.deadline)));
+
+  useEffect(() => {
+    const selectedColor = themeColors.find(c => c.name === theme)?.value;
+    if (selectedColor) {
+      document.documentElement.style.setProperty('--primary', selectedColor);
+    }
+  }, [theme]);
 
   const handleTaskFormSubmit = (values: z.infer<typeof taskSchema>) => {
     const newTask: Task = {
@@ -217,6 +234,9 @@ export default function Home() {
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const dueAlarm = alarms.find(alarm => alarm.time === currentTime);
       if(dueAlarm) {
+        // Here you would play the alarm sound `dueAlarm.sound`
+        // For this prototype, we'll just log it.
+        console.log(`Playing alarm sound: ${dueAlarm.sound}`);
         setActiveAlarm(dueAlarm);
         setAlarms(alarms.filter(a => a.id !== dueAlarm.id));
       }
@@ -275,7 +295,7 @@ export default function Home() {
   const AlarmForm = ({ onFinished }: { onFinished: (values: z.infer<typeof alarmSchema>) => void }) => {
     const form = useForm<z.infer<typeof alarmSchema>>({
       resolver: zodResolver(alarmSchema),
-      defaultValues: { description: "", time: "" },
+      defaultValues: { description: "", time: "", sound: "classic"},
     });
     return (
       <Form {...form}>
@@ -285,6 +305,18 @@ export default function Home() {
           )} />
           <FormField control={form.control} name="time" render={({ field }) => (
             <FormItem><FormLabel>{t.time}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={form.control} name="sound" render={({ field }) => (
+            <FormItem><FormLabel>{t.alarmSound}</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl><SelectTrigger><SelectValue placeholder={t.selectAlarmSound} /></SelectTrigger></FormControl>
+                <SelectContent>
+                  <SelectItem value="classic">{t.classic}</SelectItem>
+                  <SelectItem value="digital">{t.digital}</SelectItem>
+                  <SelectItem value="chime">{t.chime}</SelectItem>
+                </SelectContent>
+              </Select><FormMessage />
+            </FormItem>
           )} />
           <DialogFooter><Button type="submit">{t.setAlarm}</Button></DialogFooter>
         </form>
@@ -316,101 +348,148 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen w-full bg-background">
-      <header className="p-4 border-b">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Logo className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold font-headline">{t.appName}</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
-                <SelectTrigger className="w-[120px]">
-                    <SelectValue placeholder="Language" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="english">English</SelectItem>
-                    <SelectItem value="hinglish">Hinglish</SelectItem>
-                </SelectContent>
-            </Select>
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader>
+            <div className="flex items-center gap-2">
+                <Logo className="h-8 w-8 text-primary" />
+                <h1 className="text-2xl font-bold font-headline">{t.appName}</h1>
+            </div>
+        </SidebarHeader>
+        <SidebarContent>
+           <SidebarMenu>
+             <SidebarMenuItem>
+                <SidebarMenuButton>
+                    <Settings className="mr-2 h-5 w-5" />
+                    {t.settings}
+                </SidebarMenuButton>
+             </SidebarMenuItem>
+            </SidebarMenu>
+            <div className="p-4 space-y-4">
+                <div>
+                    <Label htmlFor="language-select">{t.language}</Label>
+                    <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
+                        <SelectTrigger id="language-select" className="w-full mt-1">
+                            <SelectValue placeholder="Language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="english">English</SelectItem>
+                            <SelectItem value="hinglish">Hinglish</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div>
+                    <Label>{t.themeColor}</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {themeColors.map((color) => (
+                        <Button
+                            key={color.name}
+                            variant={theme === color.name ? "default" : "outline"}
+                            size="icon"
+                            className="rounded-full h-8 w-8"
+                            onClick={() => setTheme(color.name)}
+                            style={{ backgroundColor: `hsl(${color.value})` }}
+                        >
+                            {theme === color.name && <Check className="h-4 w-4 text-primary-foreground" />}
+                            <span className="sr-only">{color.name}</span>
+                        </Button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </SidebarContent>
+        <SidebarFooter>
             <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-              <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />{t.addTask}</Button></DialogTrigger>
+              <DialogTrigger asChild><Button className="w-full"><Plus className="mr-2 h-4 w-4" />{t.addTask}</Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{t.addNewTask}</DialogTitle></DialogHeader><TaskForm onFinished={handleTaskFormSubmit} /></DialogContent>
             </Dialog>
             <Dialog open={isAlarmDialogOpen} onOpenChange={setIsAlarmDialogOpen}>
-              <DialogTrigger asChild><Button variant="outline"><Bell className="mr-2 h-4 w-4" />{t.addAlarm}</Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="secondary" className="w-full"><Bell className="mr-2 h-4 w-4" />{t.addAlarm}</Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{t.setNewAlarm}</DialogTitle></DialogHeader><AlarmForm onFinished={handleAlarmFormSubmit} /></DialogContent>
             </Dialog>
-          </div>
-        </div>
-      </header>
-      
-      <main className="container mx-auto p-4 grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>{t.dailyTimeline}</CardTitle>
-                <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading}>
-                  <CloudLightning className="mr-2 h-4 w-4" />{isLoading ? t.prioritizing : t.prioritizeWithAI}
-                </Button>
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarInset>
+        <div className="min-h-screen w-full bg-background">
+          <header className="p-4 border-b flex items-center justify-between md:hidden">
+              <div className="flex items-center gap-2">
+                <Logo className="h-8 w-8 text-primary" />
+                <h1 className="text-2xl font-bold font-headline">{t.appName}</h1>
               </div>
-              <CardDescription>{t.todayTasksDescription}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="active">
-                <TabsList>
-                  <TabsTrigger value="active">{t.active} ({todayTasks.length})</TabsTrigger>
-                  <TabsTrigger value="completed">{t.completed} ({completedTasks.length})</TabsTrigger>
-                </TabsList>
-                <TabsContent value="active" className="mt-4 space-y-2">
-                  {todayTasks.length > 0 ? todayTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noTasksForToday}</p>}
-                </TabsContent>
-                <TabsContent value="completed" className="mt-4 space-y-2">
-                  {completedTasks.length > 0 ? completedTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noCompletedTasks}</p>}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.alarms}</CardTitle>
-              <CardDescription>{t.upcomingAlarms}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {alarms.length > 0 ? alarms.map(alarm => (
-                <div key={alarm.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                  <div>
-                    <p className="font-medium">{alarm.description}</p>
-                    <p className="text-sm text-muted-foreground">{alarm.time}</p>
+              <SidebarTrigger />
+          </header>
+          
+          <main className="container mx-auto p-4 grid md:grid-cols-3 gap-8">
+            <div className="md:col-span-2">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>{t.dailyTimeline}</CardTitle>
+                    <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading}>
+                      <CloudLightning className="mr-2 h-4 w-4" />{isLoading ? t.prioritizing : t.prioritizeWithAI}
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setAlarms(alarms.filter(a => a.id !== alarm.id))}>
-                    <Check className="h-4 w-4 text-green-500" />
-                  </Button>
-                </div>
-              )) : <p className="text-muted-foreground text-center">{t.noAlarmsSet}</p>}
-            </CardContent>
-          </Card>
+                  <CardDescription>{t.todayTasksDescription}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="active">
+                    <TabsList>
+                      <TabsTrigger value="active">{t.active} ({todayTasks.length})</TabsTrigger>
+                      <TabsTrigger value="completed">{t.completed} ({completedTasks.length})</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="active" className="mt-4 space-y-2">
+                      {todayTasks.length > 0 ? todayTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noTasksForToday}</p>}
+                    </TabsContent>
+                    <TabsContent value="completed" className="mt-4 space-y-2">
+                      {completedTasks.length > 0 ? completedTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noCompletedTasks}</p>}
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.alarms}</CardTitle>
+                  <CardDescription>{t.upcomingAlarms}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {alarms.length > 0 ? alarms.map(alarm => (
+                    <div key={alarm.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                      <div>
+                        <p className="font-medium">{alarm.description}</p>
+                        <p className="text-sm text-muted-foreground">{alarm.time}</p>
+                      </div>
+                      <div className="flex items-center">
+                        <Music className="h-4 w-4 text-muted-foreground mr-2" />
+                        <Button variant="ghost" size="icon" onClick={() => setAlarms(alarms.filter(a => a.id !== alarm.id))}>
+                          <Check className="h-4 w-4 text-green-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  )) : <p className="text-muted-foreground text-center">{t.noAlarmsSet}</p>}
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+          
+          <AlertDialog open={!!activeAlarm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t.alarmTitle}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {activeAlarm?.description}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setActiveAlarm(null)}>{t.dismiss}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSnooze} disabled={isLoading}>{isLoading ? t.snoozing : t.snooze}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
-      </main>
-      
-      <AlertDialog open={!!activeAlarm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t.alarmTitle}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {activeAlarm?.description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setActiveAlarm(null)}>{t.dismiss}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSnooze} disabled={isLoading}>{isLoading ? t.snoozing : t.snooze}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
