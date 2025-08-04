@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster"
 export const metadata: Metadata = {
   title: 'Tranquil Task',
   description: 'A calm and focused task management app.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({

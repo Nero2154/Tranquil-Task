@@ -6,8 +6,8 @@
   :root {
     --background: 208 100% 97%;
     --foreground: 222 47% 11%;
-    --card: hsl(var(--primary));
-    --card-foreground: hsl(var(--primary-foreground));
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     --primary: 216 44% 66%;
@@ -43,8 +43,8 @@
   .dark {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
-    --card: hsl(var(--primary) / 0.2);
-    --card-foreground: hsl(var(--primary-foreground));
+    --card: 222 47% 15%;
+    --card-foreground: 210 40% 98%;
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
     --primary: 210 40% 98%;
@@ -88,6 +88,15 @@
 
 @layer components {
     .themed-card {
-        @apply bg-card text-card-foreground;
+        @apply bg-primary text-primary-foreground;
+    }
+    
+    .themed-card .themed-card-header,
+    .themed-card .themed-card-content {
+      @apply bg-primary text-primary-foreground;
+    }
+
+    .themed-card .tabs-trigger[data-state=active] {
+        @apply bg-background/90 text-foreground;
     }
 }

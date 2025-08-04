@@ -1,4 +1,4 @@
-import type { Language } from "./types";
+import type { AlarmSound, Language } from "./types";
 
 type Translation = {
   appName: string;
@@ -53,6 +53,7 @@ type Translation = {
   darkMode: string;
   customSound: string;
   uploadSound: string;
+  addToHome: string;
 };
 
 export const translations: Record<Language, Translation> = {
@@ -64,7 +65,7 @@ export const translations: Record<Language, Translation> = {
     setNewAlarm: "Set a new alarm",
     taskName: "Task Name",
     description: "Description",
-    deadline: "Deadline",
+    deadline: "Date",
     pickDate: "Pick a date",
     priority: "Priority",
     selectPriority: "Select a priority",
@@ -107,8 +108,9 @@ export const translations: Record<Language, Translation> = {
     digital: "Digital",
     chime: "Chime",
     darkMode: "Dark Mode",
-    customSound: "Custom Sound",
+    customSound: "Custom",
     uploadSound: "Upload a sound file",
+    addToHome: "Add to Home Screen",
   },
   hinglish: {
     appName: "Tranquil Task",
@@ -163,5 +165,14 @@ export const translations: Record<Language, Translation> = {
     darkMode: "Dark Mode",
     customSound: "Apni aawaz",
     uploadSound: "Sound file upload karein",
+    addToHome: "Home Screen pe Jodo",
   },
+};
+
+
+// Base64 encoded WAV files for preset sounds
+export const presetSounds: Record<Exclude<AlarmSound, 'custom'>, string> = {
+    classic: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=", // Placeholder short silent wav
+    digital: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=", // Placeholder short silent wav
+    chime: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=", // Placeholder short silent wav
 };

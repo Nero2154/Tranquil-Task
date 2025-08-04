@@ -7,11 +7,12 @@ export interface Task {
   deadline: string; // ISO string
   priority: Priority;
   completed: boolean;
+  completedAt?: string; // ISO string
   priorityScore?: number;
   reasoning?: string;
 }
 
-export type AlarmSound = "classic" | "digital" | "chime";
+export type AlarmSound = "classic" | "digital" | "chime" | "custom";
 
 export interface Alarm {
   id: string;
