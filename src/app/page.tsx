@@ -418,6 +418,7 @@ export default function Home() {
       const res = await sarcasticAlarmSnooze({ alarmDescription: `${activeAlarm.description} (in ${language})`});
       if (audioRef.current) {
         audioRef.current.src = res.audio;
+        audioRef.current.loop = false; // Ensure snooze audio does not loop
         audioRef.current.play();
       }
     } catch (error) {

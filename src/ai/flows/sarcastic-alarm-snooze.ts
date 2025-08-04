@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A flow to generate a sarcastic joke when an alarm is snoozed.
@@ -25,14 +26,19 @@ export async function sarcasticAlarmSnooze(input: SarcasticAlarmSnoozeInput): Pr
   return sarcasticAlarmSnoozeFlow(input);
 }
 
+const SarcasticJokeListOutputSchema = z.object({
+    jokes: z.array(z.string()).describe("A list of 5 short, sarcastic jokes.")
+});
+
 const prompt = ai.definePrompt({
   name: 'sarcasticAlarmSnoozePrompt',
   input: {schema: SarcasticAlarmSnoozeInputSchema},
-  prompt: `You are a sarcastic AI assistant. When the user snoozes an alarm, you generate a short, sarcastic joke related to the alarm's description to playfully discourage them from delaying tasks.
+  output: {schema: SarcasticJokeListOutputSchema},
+  prompt: `You are a sarcastic AI assistant. When the user snoozes an alarm, you generate a list of 5 short, sarcastic jokes related to the alarm's description to playfully discourage them from delaying tasks. The jokes should be distinct from each other.
 
 Alarm Description: {{{alarmDescription}}}
 
-Joke:`,
+Jokes:`,
 });
 
 const sarcasticAlarmSnoozeFlow = ai.defineFlow(
@@ -42,11 +48,14 @@ const sarcasticAlarmSnoozeFlow = ai.defineFlow(
     outputSchema: SarcasticAlarmSnoozeOutputSchema,
   },
   async input => {
-    const {text} = await prompt(input);
+    const {output} = await prompt(input);
+    const jokes = output?.jokes;
 
-    if (!text) {
-        throw new Error("The AI didn't return a joke.");
+    if (!jokes || jokes.length === 0) {
+        throw new Error("The AI didn't return any jokes.");
     }
+
+    const fullJokeText = jokes.join(" ");
 
     const {media} = await ai.generate({
       model: 'googleai/gemini-2.5-flash-preview-tts',
@@ -58,7 +67,7 @@ const sarcasticAlarmSnoozeFlow = ai.defineFlow(
           },
         },
       },
-      prompt: text,
+      prompt: fullJokeText,
     });
 
     if (!media) {
