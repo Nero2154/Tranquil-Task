@@ -23,7 +23,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 216 44% 66%;
-    --radius: 0.5rem;
+    --radius: 1rem;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -88,7 +88,7 @@
 
 @layer components {
     .themed-card {
-        @apply bg-primary text-primary-foreground;
+        @apply bg-primary text-primary-foreground rounded-3xl;
     }
     
     .themed-card .themed-card-header,
@@ -96,9 +96,16 @@
       @apply bg-primary text-primary-foreground;
     }
     
-    /* This is the key fix */
     .themed-card .card-description {
         @apply text-primary-foreground/80;
+    }
+
+    .themed-card .tabs-trigger {
+        @apply text-primary-foreground/80;
+    }
+
+    .themed-card .tabs-list {
+        @apply bg-black/10 dark:bg-white/10;
     }
 
     .themed-card .tabs-trigger[data-state=active] {

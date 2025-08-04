@@ -752,9 +752,9 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                   <Tabs defaultValue="active">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="active">{t.active} ({todayTasks.length})</TabsTrigger>
-                      <TabsTrigger value="completed">{t.completed} ({completedTasksToday.length})</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2 tabs-list">
+                      <TabsTrigger value="active" className="tabs-trigger">{t.active} ({todayTasks.length})</TabsTrigger>
+                      <TabsTrigger value="completed" className="tabs-trigger">{t.completed} ({completedTasksToday.length})</TabsTrigger>
                     </TabsList>
                     <TabsContent value="active" className="mt-4 space-y-2">
                       {todayTasks.length > 0 ? todayTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noTasksForToday}</p>}
