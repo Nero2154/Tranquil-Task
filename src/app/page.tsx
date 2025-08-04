@@ -23,6 +23,7 @@ import {
   Download,
   ListTodo,
   AlertCircle,
+  MicOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -137,6 +138,7 @@ export default function Home() {
 
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSnoozeAudioPlaying, setIsSnoozeAudioPlaying] = useState(false);
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -149,6 +151,12 @@ export default function Home() {
     setIsMounted(true);
     if (typeof window !== "undefined") {
       audioRef.current = new Audio();
+      if (audioRef.current) {
+        audioRef.current.onended = () => {
+          setIsSnoozeAudioPlaying(false);
+        }
+      }
+
       if ("Notification" in window) {
         setNotificationPermission(Notification.permission);
       }
@@ -420,6 +428,7 @@ export default function Home() {
         audioRef.current.src = res.audio;
         audioRef.current.loop = false; // Ensure snooze audio does not loop
         audioRef.current.play();
+        setIsSnoozeAudioPlaying(true);
       }
     } catch (error) {
        console.error("Snooze AI error:", error);
@@ -428,6 +437,14 @@ export default function Home() {
       setIsLoading(false);
     }
   };
+
+  const stopSnoozeJokes = () => {
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsSnoozeAudioPlaying(false);
+    }
+  }
 
   const playAlarmSound = (alarm: Alarm) => {
     if (!audioRef.current) return;
@@ -666,6 +683,11 @@ export default function Home() {
             <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
+            {isSnoozeAudioPlaying && (
+                <Button variant="destructive" onClick={stopSnoozeJokes} className="rounded-full shadow-md">
+                    <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
+                </Button>
+            )}
             <Dialog open={isTaskDialogOpen} onOpenChange={(open) => { setIsTaskDialogOpen(open); if(!open) setEditingTask(null);}}>
               <DialogTrigger asChild><Button className="rounded-full shadow-md"><Plus className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t.addTask}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{editingTask ? "Edit Task" : t.addNewTask}</DialogTitle></DialogHeader><TaskForm onFinished={handleTaskFormSubmit} task={editingTask} /></DialogContent>
@@ -745,11 +767,11 @@ export default function Home() {
       <main className="container mx-auto p-4 md:p-8">
         <div className="grid lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2">
-              <Card className="shadow-lg rounded-2xl">
+              <Card className="shadow-lg rounded-2xl themed-card">
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                         <div className="flex items-center gap-3">
-                            <ListTodo className="h-6 w-6 text-primary"/>
+                            <ListTodo className="h-6 w-6"/>
                             <div>
                                 <CardTitle className="font-bold text-2xl">{t.dailyTimeline}</CardTitle>
                                 <CardDescription>{t.todayTasksDescription}</CardDescription>
@@ -778,9 +800,9 @@ export default function Home() {
             </div>
             
             <div className="space-y-8">
-              <Card className="shadow-lg rounded-2xl">
+              <Card className="shadow-lg rounded-2xl themed-card">
                 <CardHeader className="flex flex-row items-center gap-3">
-                  <AlertCircle className="h-6 w-6 text-primary"/>
+                  <AlertCircle className="h-6 w-6"/>
                   <div>
                     <CardTitle className="font-bold text-2xl">{t.alarms}</CardTitle>
                     <CardDescription>{t.upcomingAlarms}</CardDescription>
@@ -815,3 +837,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
