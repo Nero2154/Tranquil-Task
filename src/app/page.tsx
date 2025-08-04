@@ -21,6 +21,8 @@ import {
   Trash2,
   Edit,
   Download,
+  ListTodo,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -111,11 +113,11 @@ const alarmSchema = z.object({
 });
 
 const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
-    { name: "default", value: "216 44% 66%", foreground: "210 40% 98%" },
-    { name: "stone", value: "40 85% 65%", foreground: "40 85% 10%" },
-    { name: "red", value: "0 84% 65%", foreground: "0 84% 98%" },
-    { name: "green", value: "142 76% 50%", foreground: "142 76% 98%" },
-    { name: "blue", value: "262 83% 72%", foreground: "262 83% 98%" },
+    { name: "default", value: "262 83% 72%", foreground: "210 40% 98%" }, // Indigo
+    { name: "stone", value: "34 97% 64%", foreground: "24 9.8% 10%" }, // Orange
+    { name: "green", value: "142 71% 45%", foreground: "142 71% 95%" }, // Green
+    { name: "red", value: "0 72% 51%", foreground: "0 72% 95%" }, // Red
+    { name: "blue", value: "217 91% 60%", foreground: "217 91% 95%" }, // Blue
 ];
 
 export default function Home() {
@@ -250,6 +252,7 @@ export default function Home() {
       if (selectedColor) {
         root.style.setProperty('--primary', selectedColor.value);
         root.style.setProperty('--primary-foreground', selectedColor.foreground);
+        root.style.setProperty('--ring', selectedColor.value);
       }
     }
   }, [theme, themeMode, isMounted]);
@@ -595,14 +598,14 @@ export default function Home() {
   };
 
   const TaskItem = ({ task }: { task: Task }) => (
-    <div className="flex items-center space-x-4 p-3 rounded-lg transition-colors hover:bg-black/10 dark:hover:bg-white/10">
+    <div className="flex items-center space-x-4 p-4 rounded-lg bg-background hover:bg-muted/80 transition-colors">
       <TooltipProvider><Tooltip><TooltipTrigger>
         <Checkbox id={task.id} checked={task.completed} onCheckedChange={(checked) => handleTaskComplete(task.id, !!checked)} />
       </TooltipTrigger><TooltipContent><p>{task.completed ? "Mark as active" : "Mark as completed"}</p></TooltipContent></Tooltip></TooltipProvider>
       <div className="flex-1">
         <label htmlFor={task.id} className={cn("font-medium", task.completed && "line-through text-muted-foreground")}>{task.name}</label>
-        <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-x-2 gap-y-1">
-          <span>{format(parseISO(task.deadline), "PPp")}</span>
+        <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-x-2 gap-y-1 mt-1">
+          <span>{format(parseISO(task.deadline), "p")}</span>
           <Badge variant={task.priority === 'High' ? 'destructive' : task.priority === 'Medium' ? 'secondary' : 'outline'}>{task.priority}</Badge>
           {task.reasoning && (
              <TooltipProvider>
@@ -624,7 +627,7 @@ export default function Home() {
   );
   
   const AlarmItem = ({ alarm }: { alarm: Alarm }) => (
-     <div key={alarm.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 dark:bg-background/20">
+     <div key={alarm.id} className="flex items-center justify-between p-4 rounded-lg bg-background hover:bg-muted/80 transition-colors">
       <div>
         <p className="font-medium">{alarm.description}</p>
         <p className="text-sm text-muted-foreground">{alarm.time}</p>
@@ -663,17 +666,17 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <Dialog open={isTaskDialogOpen} onOpenChange={(open) => { setIsTaskDialogOpen(open); if(!open) setEditingTask(null);}}>
-              <DialogTrigger asChild><Button className="shadow-lg"><Plus className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t.addTask}</span></Button></DialogTrigger>
+              <DialogTrigger asChild><Button className="rounded-full shadow-md"><Plus className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t.addTask}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{editingTask ? "Edit Task" : t.addNewTask}</DialogTitle></DialogHeader><TaskForm onFinished={handleTaskFormSubmit} task={editingTask} /></DialogContent>
             </Dialog>
             <Dialog open={isAlarmDialogOpen} onOpenChange={(open) => { setIsAlarmDialogOpen(open); if(!open) setEditingAlarm(null);}}>
-              <DialogTrigger asChild><Button variant="secondary" className="shadow-lg"><Bell className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t.addAlarm}</span></Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="secondary" className="rounded-full shadow-md"><Bell className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">{t.addAlarm}</span></Button></DialogTrigger>
               <DialogContent><DialogHeader><DialogTitle>{editingAlarm ? "Edit Alarm" : t.setNewAlarm}</DialogTitle></DialogHeader><AlarmForm onFinished={handleAlarmFormSubmit} alarm={editingAlarm}/></DialogContent>
             </Dialog>
 
              <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="shadow-lg">
+                <Button variant="outline" size="icon" className="rounded-full shadow-md">
                   <Settings className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -705,13 +708,16 @@ export default function Home() {
                             {themeColors.map((color) => (
                             <Button
                                 key={color.name}
-                                variant={theme === color.name ? "default" : "outline"}
+                                variant={"outline"}
                                 size="icon"
-                                className="rounded-full h-8 w-8"
+                                className={cn(
+                                  "rounded-full h-8 w-8 border-2",
+                                  theme === color.name ? "border-ring" : "border-transparent"
+                                )}
                                 onClick={() => setTheme(color.name)}
                                 style={{ backgroundColor: `hsl(${color.value})` }}
                             >
-                                {theme === color.name && <Check className="h-4 w-4 text-primary-foreground" />}
+                                {theme === color.name && <Check className="h-4 w-4" style={{color: `hsl(${color.foreground})`}} />}
                                 <span className="sr-only">{color.name}</span>
                             </Button>
                             ))}
@@ -736,45 +742,51 @@ export default function Home() {
       </header>
       
       <main className="container mx-auto p-4 md:p-8">
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2">
-              <Card className="themed-card">
+              <Card className="shadow-lg rounded-2xl">
                 <CardHeader>
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                    <div>
-                      <CardTitle>{t.dailyTimeline}</CardTitle>
-                      <CardDescription>{t.todayTasksDescription}</CardDescription>
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <ListTodo className="h-6 w-6 text-primary"/>
+                            <div>
+                                <CardTitle className="font-bold text-2xl">{t.dailyTimeline}</CardTitle>
+                                <CardDescription>{t.todayTasksDescription}</CardDescription>
+                            </div>
+                        </div>
+                        <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading} className="w-full sm:w-auto rounded-full shadow-md">
+                            <CloudLightning className="mr-2 h-4 w-4" />{isLoading ? t.prioritizing : t.prioritizeWithAI}
+                        </Button>
                     </div>
-                    <Button variant="secondary" onClick={handlePrioritize} disabled={isLoading} className="w-full sm:w-auto shadow-lg">
-                      <CloudLightning className="mr-2 h-4 w-4" />{isLoading ? t.prioritizing : t.prioritizeWithAI}
-                    </Button>
-                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-4">
                   <Tabs defaultValue="active">
-                    <TabsList className="grid w-full grid-cols-2 tabs-list">
-                      <TabsTrigger value="active" className="tabs-trigger">{t.active} ({todayTasks.length})</TabsTrigger>
-                      <TabsTrigger value="completed" className="tabs-trigger">{t.completed} ({completedTasksToday.length})</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="active">{t.active} ({todayTasks.length})</TabsTrigger>
+                      <TabsTrigger value="completed">{t.completed} ({completedTasksToday.length})</TabsTrigger>
                     </TabsList>
                     <TabsContent value="active" className="mt-4 space-y-2">
-                      {todayTasks.length > 0 ? todayTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noTasksForToday}</p>}
+                      {todayTasks.length > 0 ? todayTasks.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-8 text-center">{t.noTasksForToday}</p>}
                     </TabsContent>
                     <TabsContent value="completed" className="mt-4 space-y-2">
-                      {completedTasksToday.length > 0 ? completedTasksToday.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-4 text-center">{t.noCompletedTasks}</p>}
+                      {completedTasksToday.length > 0 ? completedTasksToday.map(task => <TaskItem key={task.id} task={task} />) : <p className="text-muted-foreground p-8 text-center">{t.noCompletedTasks}</p>}
                     </TabsContent>
                   </Tabs>
                 </CardContent>
               </Card>
             </div>
             
-            <div>
-              <Card className="themed-card">
-                <CardHeader>
-                  <CardTitle>{t.alarms}</CardTitle>
-                  <CardDescription>{t.upcomingAlarms}</CardDescription>
+            <div className="space-y-8">
+              <Card className="shadow-lg rounded-2xl">
+                <CardHeader className="flex flex-row items-center gap-3">
+                  <AlertCircle className="h-6 w-6 text-primary"/>
+                  <div>
+                    <CardTitle className="font-bold text-2xl">{t.alarms}</CardTitle>
+                    <CardDescription>{t.upcomingAlarms}</CardDescription>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {alarms.length > 0 ? alarms.map(alarm => <AlarmItem key={alarm.id} alarm={alarm}/>) : <p className="text-muted-foreground text-center p-4">{t.noAlarmsSet}</p>}
+                <CardContent className="space-y-2">
+                  {alarms.length > 0 ? alarms.map(alarm => <AlarmItem key={alarm.id} alarm={alarm}/>) : <p className="text-muted-foreground text-center p-8">{t.noAlarmsSet}</p>}
                 </CardContent>
               </Card>
             </div>
@@ -789,7 +801,7 @@ export default function Home() {
               {activeAlarm?.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col sm:flex-col gap-2">
              <Button variant="outline" onClick={() => { stopAlarmSound(); setActiveAlarm(null); }}>{t.dismiss}</Button>
              <div className="flex flex-col sm:flex-row gap-2">
                 <Button onClick={() => handleSnooze(5)} disabled={isLoading}>{t.snooze} 5 min</Button>
