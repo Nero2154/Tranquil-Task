@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -28,6 +27,7 @@ import {
   Clock,
   Mail,
   MessageSquare,
+  PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,7 +85,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription as AlertDialogDesc,
+  AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -147,6 +147,8 @@ export default function Home() {
   const [isSnoozeAudioPlaying, setIsSnoozeAudioPlaying] = useState(false);
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+
 
   const [isMounted, setIsMounted] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState("default");
@@ -157,6 +159,7 @@ export default function Home() {
     setIsMounted(true);
     if (typeof window !== "undefined") {
       audioRef.current = new Audio();
+      previewAudioRef.current = new Audio();
       if (audioRef.current) {
         audioRef.current.onended = () => {
           setIsSnoozeAudioPlaying(false);
@@ -585,6 +588,13 @@ export default function Home() {
             reader.readAsDataURL(file);
         }
     };
+    
+    const playPreview = () => {
+        if (previewAudioRef.current && soundValue && soundValue !== 'custom') {
+            previewAudioRef.current.src = presetSounds[soundValue];
+            previewAudioRef.current.play();
+        }
+    }
 
     return (
       <Form {...form}>
@@ -595,19 +605,24 @@ export default function Home() {
           <FormField control={form.control} name="time" render={({ field }) => (
             <FormItem><FormLabel>{t.time}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="sound" render={({ field }) => (
-            <FormItem><FormLabel>{t.alarmSound}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl><SelectTrigger><SelectValue placeholder={t.selectAlarmSound} /></SelectTrigger></FormControl>
-                <SelectContent>
-                  <SelectItem value="classic">{t.classic}</SelectItem>
-                  <SelectItem value="digital">{t.digital}</SelectItem>
-                  <SelectItem value="chime">{t.chime}</SelectItem>
-                  <SelectItem value="custom">{t.customSound}</SelectItem>
-                </SelectContent>
-              </Select><FormMessage />
-            </FormItem>
-          )} />
+           <div className="flex items-end gap-2">
+            <FormField control={form.control} name="sound" render={({ field }) => (
+              <FormItem className="flex-grow"><FormLabel>{t.alarmSound}</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl><SelectTrigger><SelectValue placeholder={t.selectAlarmSound} /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    <SelectItem value="classic">{t.classic}</SelectItem>
+                    <SelectItem value="digital">{t.digital}</SelectItem>
+                    <SelectItem value="chime">{t.chime}</SelectItem>
+                    <SelectItem value="custom">{t.customSound}</SelectItem>
+                  </SelectContent>
+                </Select><FormMessage />
+              </FormItem>
+            )} />
+            <Button type="button" variant="outline" size="icon" onClick={playPreview} disabled={soundValue === 'custom'}>
+                <PlayCircle className="h-5 w-5" />
+            </Button>
+          </div>
           {soundValue === "custom" && (
             <FormItem>
               <FormLabel>{t.customSound}</FormLabel>
@@ -860,9 +875,9 @@ export default function Home() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t.alarmTitle}</AlertDialogTitle>
-            <AlertDialogDesc>
+            <AlertDialogDescription>
               {activeAlarm?.description}
-            </AlertDialogDesc>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-col gap-2">
              <Button variant="outline" onClick={() => { stopAlarmSound(); setActiveAlarm(null); }}>{t.dismiss}</Button>
