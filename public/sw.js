@@ -1,22 +1,16 @@
+// A basic service worker for PWA capabilities
+
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing.');
+  console.log('Service Worker: Installing...');
+  // Pre-cache app shell, if needed
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating.');
+  console.log('Service Worker: Activating...');
+  return self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // We are not caching anything in this version of the service worker
-});
-
-self.addEventListener('push', event => {
-  const data = event.data.json();
-  const title = data.title;
-  const options = {
-    body: data.body,
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-192x192.png',
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Basic fetch handler, can be expanded for offline strategies
+  event.respondWith(fetch(event.request));
 });

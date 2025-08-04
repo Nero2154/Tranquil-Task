@@ -2,10 +2,6 @@
   "name": "Tranquil Task",
   "short_name": "TranquilTask",
   "description": "A calm and focused task management app.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#F0F8FF",
-  "theme_color": "#87CEEB",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -17,5 +13,9 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F0F8FF",
+  "theme_color": "#87CEEB"
 }
