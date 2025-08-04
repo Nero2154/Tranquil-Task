@@ -27,6 +27,7 @@ import {
   Lightbulb,
   Clock,
   Mail,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +46,7 @@ import {
   DialogTrigger,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -83,7 +85,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription,
+  AlertDialogDescription as AlertDialogDesc,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -746,7 +748,7 @@ export default function Home() {
                         <Label>{t.suggestions}</Label>
                         <div className="text-sm text-muted-foreground p-2 rounded-md bg-muted/50 flex items-start gap-2">
                             <Mail className="h-4 w-4 mt-1 shrink-0" />
-                            <span>tranquilsuggestion@zohomail.in</span>
+                            <a href="mailto:tranquilsuggestion@zohomail.in" className="underline hover:text-primary">tranquilsuggestion@zohomail.in</a>
                         </div>
                     </div>
 
@@ -805,7 +807,7 @@ export default function Home() {
       <main className="container mx-auto p-4 md:p-8">
         <div className="grid lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2">
-              <Card className="shadow-lg rounded-2xl themed-card">
+              <Card className="shadow-lg rounded-3xl themed-card">
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                         <div className="flex items-center gap-3">
@@ -838,7 +840,7 @@ export default function Home() {
             </div>
             
             <div className="space-y-8">
-              <Card className="shadow-lg rounded-2xl themed-card">
+              <Card className="shadow-lg rounded-3xl themed-card">
                 <CardHeader className="flex flex-row items-center gap-3">
                   <AlertCircle className="h-6 w-6"/>
                   <div>
@@ -858,9 +860,9 @@ export default function Home() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t.alarmTitle}</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDesc>
               {activeAlarm?.description}
-            </AlertDialogDescription>
+            </AlertDialogDesc>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-col gap-2">
              <Button variant="outline" onClick={() => { stopAlarmSound(); setActiveAlarm(null); }}>{t.dismiss}</Button>
