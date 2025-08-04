@@ -24,6 +24,7 @@ import {
   ListTodo,
   AlertCircle,
   MicOff,
+  Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +69,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { prioritizeTasks } from "@/ai/flows/prioritize-tasks";
 import { motivateTaskCompletion } from "@/ai/flows/motivate-task-completion";
 import { sarcasticAlarmSnooze } from "@/ai/flows/sarcastic-alarm-snooze";
+import { processUserFeedback } from "@/ai/flows/process-user-feedback";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -113,6 +115,10 @@ const alarmSchema = z.object({
   customSoundDataUri: z.string().optional(),
 });
 
+const feedbackSchema = z.object({
+    feedback: z.string().min(10, "Feedback must be at least 10 characters long."),
+});
+
 const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
     { name: "default", value: "262 83% 72%", foreground: "210 40% 98%" }, // Indigo
     { name: "stone", value: "34 97% 64%", foreground: "24 9.8% 10%" }, // Orange
@@ -135,6 +141,8 @@ export default function Home() {
 
   const [isAlarmDialogOpen, setIsAlarmDialogOpen] = useState(false);
   const [editingAlarm, setEditingAlarm] = useState<Alarm | null>(null);
+
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
 
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -311,6 +319,27 @@ export default function Home() {
     setEditingAlarm(null);
     setIsAlarmDialogOpen(false);
   };
+
+  const handleFeedbackFormSubmit = async (values: z.infer<typeof feedbackSchema>) => {
+    setIsLoading(true);
+    try {
+        const res = await processUserFeedback({
+            feedback: values.feedback,
+            language: language,
+        });
+        toast({
+            title: "Feedback Submitted!",
+            description: res.responseMessage,
+        });
+        setIsFeedbackDialogOpen(false);
+    } catch (error) {
+        console.error("Feedback AI error:", error);
+        toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
 
   const handleTaskComplete = async (taskId: string, completed: boolean) => {
     const updatedTasks = tasks.map((task) =>
@@ -615,6 +644,43 @@ export default function Home() {
     );
   };
 
+  const FeedbackForm = ({ onFinished }: { onFinished: (values: z.infer<typeof feedbackSchema>) => void }) => {
+    const form = useForm<z.infer<typeof feedbackSchema>>({
+        resolver: zodResolver(feedbackSchema),
+        defaultValues: { feedback: "" },
+    });
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onFinished)} className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="feedback"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>{t.feedbackLabel}</FormLabel>
+                            <FormControl>
+                                <Textarea
+                                    placeholder={t.feedbackPlaceholder}
+                                    {...field}
+                                    rows={5}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <DialogFooter>
+                    <Button type="submit" disabled={isLoading}>
+                        {isLoading ? t.submitting : t.submit}
+                    </Button>
+                </DialogFooter>
+            </form>
+        </Form>
+    );
+  };
+
+
   const TaskItem = ({ task }: { task: Task }) => (
     <div className="flex items-center space-x-4 p-4 rounded-lg bg-background hover:bg-muted/80 transition-colors">
       <TooltipProvider><Tooltip><TooltipTrigger>
@@ -706,14 +772,30 @@ export default function Home() {
               <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuLabel>{t.settings}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <div className="p-2 space-y-4">
+                <div className="p-2 space-y-2">
                     {installPrompt && (
                         <Button onClick={handleInstallClick} className="w-full"><Download className="mr-2" /> {t.addToHome}</Button>
                     )}
                     {notificationPermission === 'default' && (
                         <Button onClick={requestNotificationPermission} variant="outline" className="w-full">Enable Notifications</Button>
                     )}
-                    <div>
+
+                    <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start px-2 font-normal">
+                          <Lightbulb className="mr-2" /> {t.suggestions}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{t.suggestionsTitle}</DialogTitle>
+                            <DialogDescription>{t.suggestionsDescription}</DialogDescription>
+                        </DialogHeader>
+                        <FeedbackForm onFinished={handleFeedbackFormSubmit} />
+                      </DialogContent>
+                    </Dialog>
+
+                    <div className="pt-2">
                         <Label htmlFor="language-select">{t.language}</Label>
                         <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
                             <SelectTrigger id="language-select" className="w-full mt-1">
@@ -746,7 +828,7 @@ export default function Home() {
                             ))}
                         </div>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between pt-2">
                       <Label htmlFor="dark-mode-switch" className="flex items-center gap-2">
                          {themeMode === 'dark' ? <Moon/> : <Sun />}
                          <span>{t.darkMode}</span>

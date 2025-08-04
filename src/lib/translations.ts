@@ -54,6 +54,13 @@ type Translation = {
   customSound: string;
   uploadSound: string;
   addToHome: string;
+  suggestions: string;
+  suggestionsTitle: string;
+  suggestionsDescription: string;
+  feedbackLabel: string;
+  feedbackPlaceholder: string;
+  submit: string;
+  submitting: string;
 };
 
 export const translations: Record<Language, Translation> = {
@@ -111,6 +118,13 @@ export const translations: Record<Language, Translation> = {
     customSound: "Custom",
     uploadSound: "Upload a sound file",
     addToHome: "Add to Home Screen",
+    suggestions: "Suggestions & Feedback",
+    suggestionsTitle: "Have a suggestion?",
+    suggestionsDescription: "We'd love to hear your ideas for improving the app.",
+    feedbackLabel: "Your Feedback",
+    feedbackPlaceholder: "Tell us your idea...",
+    submit: "Submit",
+    submitting: "Submitting...",
   },
   hinglish: {
     appName: "Tranquil Task",
@@ -166,6 +180,13 @@ export const translations: Record<Language, Translation> = {
     customSound: "Apni aawaz",
     uploadSound: "Sound file upload karein",
     addToHome: "Home Screen pe Jodo",
+    suggestions: "Sujhaav aur प्रतिक्रिया",
+    suggestionsTitle: "Koi sujhaav hai?",
+    suggestionsDescription: "App ko behtar banane ke liye hum aapke vichar sunna chahenge.",
+    feedbackLabel: "Aapki Pratikriya",
+    feedbackPlaceholder: "Humein apna vichar batao...",
+    submit: "Submit Karein",
+    submitting: "Submit ho raha hai...",
   },
 };
 
@@ -176,3 +197,4 @@ export const presetSounds: Record<Exclude<AlarmSound, 'custom'>, string> = {
     digital: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=", // Placeholder short silent wav
     chime: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=", // Placeholder short silent wav
 };
+
