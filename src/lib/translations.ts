@@ -55,12 +55,6 @@ type Translation = {
   uploadSound: string;
   addToHome: string;
   suggestions: string;
-  suggestionsTitle: string;
-  suggestionsDescription: string;
-  feedbackLabel: string;
-  feedbackPlaceholder: string;
-  submit: string;
-  submitting: string;
   duration: string;
 };
 
@@ -119,13 +113,7 @@ export const translations: Record<Language, Translation> = {
     customSound: "Custom",
     uploadSound: "Upload a sound file",
     addToHome: "Add to Home Screen",
-    suggestions: "Suggestions & Feedback",
-    suggestionsTitle: "Have a suggestion?",
-    suggestionsDescription: "We'd love to hear your ideas for improving the app.",
-    feedbackLabel: "Your Feedback",
-    feedbackPlaceholder: "Tell us your idea...",
-    submit: "Submit",
-    submitting: "Submitting...",
+    suggestions: "For suggestions, please email:",
     duration: "Duration (minutes)",
   },
   hinglish: {
@@ -182,13 +170,7 @@ export const translations: Record<Language, Translation> = {
     customSound: "Apni aawaz",
     uploadSound: "Sound file upload karein",
     addToHome: "Home Screen pe Jodo",
-    suggestions: "Sujhaav aur प्रतिक्रिया",
-    suggestionsTitle: "Koi sujhaav hai?",
-    suggestionsDescription: "App ko behtar banane ke liye hum aapke vichar sunna chahenge.",
-    feedbackLabel: "Aapki Pratikriya",
-    feedbackPlaceholder: "Humein apna vichar batao...",
-    submit: "Submit Karein",
-    submitting: "Submit ho raha hai...",
+    suggestions: "Sujhav ke liye, kripya email karein:",
     duration: "Avadhi (minutes)",
   },
 };
