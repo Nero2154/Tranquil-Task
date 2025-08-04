@@ -394,7 +394,7 @@ export default function Home() {
       const updatedTasks = tasks.map(task => {
         const pTask = prioritizedMap.get(task.name);
         if (pTask) {
-          return { ...task, priorityScore: pTask.score, reasoning: p.reasoning };
+          return { ...task, priorityScore: pTask.score, reasoning: pTask.reasoning };
         }
         return task;
       });
@@ -892,3 +892,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
