@@ -95,6 +95,11 @@
     .themed-card .themed-card-content {
       @apply bg-primary text-primary-foreground;
     }
+    
+    /* This is the key fix */
+    .themed-card .card-description {
+        @apply text-primary-foreground/80;
+    }
 
     .themed-card .tabs-trigger[data-state=active] {
         @apply bg-background/90 text-foreground;
