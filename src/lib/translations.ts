@@ -177,7 +177,7 @@ export const translations: Record<Language, Translation> = {
 
 // Use file paths to sounds in the public directory
 export const presetSounds: Record<Exclude<AlarmSound, 'custom'>, string> = {
-    classic: "/sounds/classic.wav",
-    digital: "/sounds/digital.wav",
-    chime: "/sounds/chime.wav",
+    classic: "/sounds/classic.mp3",
+    digital: "/sounds/digital.mp3",
+    chime: "/sounds/chime.mp3",
 };
