@@ -61,6 +61,7 @@ type Translation = {
   feedbackPlaceholder: string;
   submit: string;
   submitting: string;
+  duration: string;
 };
 
 export const translations: Record<Language, Translation> = {
@@ -125,6 +126,7 @@ export const translations: Record<Language, Translation> = {
     feedbackPlaceholder: "Tell us your idea...",
     submit: "Submit",
     submitting: "Submitting...",
+    duration: "Duration (minutes)",
   },
   hinglish: {
     appName: "Tranquil Task",
@@ -187,6 +189,7 @@ export const translations: Record<Language, Translation> = {
     feedbackPlaceholder: "Humein apna vichar batao...",
     submit: "Submit Karein",
     submitting: "Submit ho raha hai...",
+    duration: "Avadhi (minutes)",
   },
 };
 
@@ -197,4 +200,3 @@ export const presetSounds: Record<Exclude<AlarmSound, 'custom'>, string> = {
     digital: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=", // Placeholder short silent wav
     chime: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=", // Placeholder short silent wav
 };
-

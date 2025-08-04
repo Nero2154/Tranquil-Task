@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview An AI agent to prioritize tasks based on deadlines, importance, and descriptions.
+ * @fileOverview An AI agent to prioritize tasks based on deadlines, importance, descriptions, and duration.
  *
  * - prioritizeTasks - A function that prioritizes tasks.
  * - Task - The type definition for a task.
@@ -16,6 +16,7 @@ const TaskSchema = z.object({
   description: z.string().describe('A detailed description of the task.'),
   deadline: z.string().describe('The deadline for the task (ISO format).'),
   priority: z.enum(['High', 'Medium', 'Low']).describe('The priority of the task.'),
+  duration: z.number().optional().describe('The estimated duration of the task in minutes.'),
 });
 
 export type Task = z.infer<typeof TaskSchema>;
@@ -41,12 +42,13 @@ const taskPrioritizationPrompt = ai.definePrompt({
   name: 'taskPrioritizationPrompt',
   input: {schema: PrioritizeTasksInputSchema},
   output: {schema: PrioritizedTasksOutputSchema},
-  prompt: `You are an AI assistant designed to prioritize a list of tasks based on their deadlines, importance, and descriptions. Your goal is to help the user focus on the most critical items first.
+  prompt: `You are an AI assistant designed to prioritize a list of tasks based on their deadlines, importance, descriptions, and duration. Your goal is to help the user focus on the most critical items first.
 
 Analyze each task and assign a priority score based on the following criteria:
 
 - **Deadline:** Tasks with closer deadlines should have higher priority.
 - **Importance:** Tasks marked as 'High' priority should have higher priority.
+- **Duration:** Longer tasks might need more lead time and could be prioritized higher, even if the deadline is not immediate.
 - **Description:** Consider the task description to understand the potential impact of not completing the task.
 
 Provide a brief reasoning for each assigned priority score.
@@ -57,6 +59,7 @@ Tasks:
   Description: {{description}}
   Deadline: {{deadline}}
   Priority: {{priority}}
+  {{#if duration}}Duration: {{duration}} minutes{{/if}}
 {{/each}}
 
 Output the prioritized tasks with their priority scores and reasoning in a JSON array format:

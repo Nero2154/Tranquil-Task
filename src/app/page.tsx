@@ -25,6 +25,7 @@ import {
   AlertCircle,
   MicOff,
   Lightbulb,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -106,6 +107,7 @@ const taskSchema = z.object({
   deadlineDate: z.date(),
   deadlineTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
   priority: z.enum(["Low", "Medium", "High"]),
+  duration: z.string().optional(),
 });
 
 const alarmSchema = z.object({
@@ -279,7 +281,12 @@ export default function Home() {
     const deadline = setMinutes(setHours(values.deadlineDate, hours), minutes);
 
     if (editingTask) {
-        const updatedTask: Task = { ...editingTask, ...values, deadline: deadline.toISOString() };
+        const updatedTask: Task = { 
+            ...editingTask, 
+            ...values, 
+            deadline: deadline.toISOString(),
+            duration: values.duration ? parseInt(values.duration, 10) : undefined
+        };
         setTasks(tasks.map(t => t.id === editingTask.id ? updatedTask : t));
         toast({ title: "Task updated!" });
         scheduleNotification(updatedTask);
@@ -291,6 +298,7 @@ export default function Home() {
           deadline: deadline.toISOString(),
           priority: values.priority,
           completed: false,
+          duration: values.duration ? parseInt(values.duration, 10) : undefined
         };
         setTasks([...tasks, newTask]);
         toast({
@@ -399,7 +407,11 @@ export default function Home() {
     }
     setIsLoading(true);
     try {
-      const prioritized = await prioritizeTasks(todayTasks.map(t => ({...t, description: `${t.description || ''} (in ${language})`})));
+      const prioritized = await prioritizeTasks(todayTasks.map(t => ({
+          ...t, 
+          description: `${t.description || ''} (in ${language})`,
+          duration: t.duration
+        })));
       const prioritizedMap = new Map(prioritized.map(p => [p.name, { score: p.priorityScore, reasoning: p.reasoning }]));
       
       const updatedTasks = tasks.map(task => {
@@ -518,6 +530,7 @@ export default function Home() {
         priority: task?.priority || "Medium",
         deadlineDate: defaultDeadline,
         deadlineTime: format(defaultDeadline, 'HH:mm'),
+        duration: task?.duration?.toString() || "",
       },
     });
     return (
@@ -550,18 +563,23 @@ export default function Home() {
               <FormItem className="flex flex-col"><FormLabel>{t.time}</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
           </div>
-          <FormField control={form.control} name="priority" render={({ field }) => (
-            <FormItem><FormLabel>{t.priority}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl><SelectTrigger><SelectValue placeholder={t.selectPriority} /></SelectTrigger></FormControl>
-                <SelectContent>
-                  <SelectItem value="Low">{t.low}</SelectItem>
-                  <SelectItem value="Medium">{t.medium}</SelectItem>
-                  <SelectItem value="High">{t.high}</SelectItem>
-                </SelectContent>
-              </Select><FormMessage />
-            </FormItem>
-          )} />
+          <div className="grid grid-cols-2 gap-4">
+            <FormField control={form.control} name="priority" render={({ field }) => (
+              <FormItem><FormLabel>{t.priority}</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl><SelectTrigger><SelectValue placeholder={t.selectPriority} /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    <SelectItem value="Low">{t.low}</SelectItem>
+                    <SelectItem value="Medium">{t.medium}</SelectItem>
+                    <SelectItem value="High">{t.high}</SelectItem>
+                  </SelectContent>
+                </Select><FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="duration" render={({ field }) => (
+                <FormItem><FormLabel>{t.duration}</FormLabel><FormControl><Input type="number" placeholder="e.g., 30" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+          </div>
           <DialogFooter><Button type="submit">{task ? "Update Task" : t.addTask}</Button></DialogFooter>
         </form>
       </Form>
@@ -689,8 +707,16 @@ export default function Home() {
       </TooltipTrigger><TooltipContent><p>{task.completed ? "Mark as active" : "Mark as completed"}</p></TooltipContent></Tooltip></TooltipProvider>
       <div className="flex-1">
         <label htmlFor={task.id} className={cn("font-medium", task.completed && "line-through text-muted-foreground")}>{task.name}</label>
-        <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-x-2 gap-y-1 mt-1">
-          <span>{format(parseISO(task.deadline), "p")}</span>
+        <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-x-4 gap-y-1 mt-1">
+          <div className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span>{format(parseISO(task.deadline), "p")}</span>
+          </div>
+          {task.duration && (
+            <div className="flex items-center gap-1">
+                <span>({task.duration} min)</span>
+            </div>
+          )}
           <Badge variant={task.priority === 'High' ? 'destructive' : task.priority === 'Medium' ? 'secondary' : 'outline'}>{task.priority}</Badge>
           {task.reasoning && (
              <TooltipProvider>

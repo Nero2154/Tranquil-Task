@@ -10,6 +10,7 @@ export interface Task {
   completedAt?: string; // ISO string
   priorityScore?: number;
   reasoning?: string;
+  duration?: number; // in minutes
 }
 
 export type AlarmSound = "classic" | "digital" | "chime" | "custom";
