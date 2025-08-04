@@ -162,7 +162,9 @@ export default function Home() {
       previewAudioRef.current = new Audio();
       if (audioRef.current) {
         audioRef.current.onended = () => {
-          setIsSnoozeAudioPlaying(false);
+          if (isSnoozeAudioPlaying) {
+             setIsSnoozeAudioPlaying(false);
+          }
         }
       }
 
@@ -892,5 +894,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
