@@ -499,7 +499,6 @@ export default function Home() {
 
   const handleSnooze = (minutes: number) => {
     if(!activeAlarm) return;
-
     const originalAlarmDescription = activeAlarm.description;
     
     stopAlarmSound();
@@ -514,11 +513,12 @@ export default function Home() {
         description: `${activeAlarm.description} (Snoozed)`
     };
 
+    setActiveAlarm(null); // Close dialog immediately to prevent unmount issues
+
+    // Schedule snoozed alarm AFTER closing dialog
     setAlarms(currentAlarms => [...currentAlarms, snoozedAlarm]);
     scheduleAlarmNotification(snoozedAlarm);
     
-    setActiveAlarm(null); // Close the dialog immediately to avoid unmount conflicts
-
     toast({
         title: `Alarm Snoozed for ${minutes} minutes`,
         description: `Will ring again at ${newAlarmTime}`
@@ -527,7 +527,7 @@ export default function Home() {
     // Fire and forget the joke audio after UI updates
     sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})`})
         .then(res => {
-            if (snoozeAudio) {
+            if (snoozeAudio && !isAudioPlaying) {
                 snoozeAudio.src = res.audio;
                 snoozeAudio.play().catch(e => console.error("Error playing snooze joke:", e));
             }
@@ -556,32 +556,28 @@ export default function Home() {
     if (soundSrc) {
         isAudioPlaying = true;
         
-        // Robust playback protocol
-        audioRef.current.pause();
-        audioRef.current.src = soundSrc;
-        audioRef.current.loop = true;
-        audioRef.current.load(); // Important: load the new source
+        const audio = audioRef.current;
+        audio.pause();
+        audio.src = soundSrc;
+        audio.loop = true;
+        audio.load();
 
-        // Play only when the media is ready
-        audioRef.current.oncanplay = () => {
-            if (audioRef.current) {
-                const playPromise = audioRef.current.play();
+        // Use oncanplay to ensure the media is ready before playing
+        audio.oncanplay = () => {
+            if (audio) {
+                const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(e => {
                         console.error("Error playing alarm sound:", e);
                         isAudioPlaying = false; // Reset lock on error
-                    }).then(() => {
-                        // Playback started successfully. We don't need to reset the lock here
-                        // as it will be reset by stopAlarmSound.
                     });
                 } else {
-                     isAudioPlaying = false; // Reset lock if play() is not supported
+                     isAudioPlaying = false; 
                 }
             }
         };
 
-        // Handle errors during loading
-        audioRef.current.onerror = () => {
+        audio.onerror = () => {
             console.error("Error loading audio source.");
             isAudioPlaying = false;
         };
