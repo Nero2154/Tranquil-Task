@@ -85,10 +85,10 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription as AlertDialogDescriptionComponent,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription as AlertDialogDescriptionComponent,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -482,6 +482,38 @@ export default function Home() {
     }
   };
   
+const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop = false) => {
+    if (isAudioPlaying) {
+      return;
+    }
+    if (!audioElement) {
+      return;
+    }
+    isAudioPlaying = true;
+
+    audioElement.pause();
+    audioElement.src = src;
+    audioElement.loop = loop;
+    audioElement.load();
+
+    audioElement.oncanplay = () => {
+      audioElement.play()
+        .catch(e => {
+          console.error("Error playing audio:", e);
+        })
+        .finally(() => {
+          if (!audioElement.loop) {
+            isAudioPlaying = false;
+          }
+        });
+    };
+
+    audioElement.onerror = () => {
+      console.error("Error loading audio source.");
+      isAudioPlaying = false;
+    };
+}, []);
+
   const stopAlarmSound = useCallback(() => {
     if (audio && !audio.paused) {
       audio.pause();
@@ -538,32 +570,6 @@ export default function Home() {
     stopAlarmSound();
     setActiveAlarm(null);
   };
-
-  const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop = false) => {
-    if (isAudioPlaying) return;
-    if (!audioElement) return;
-
-    isAudioPlaying = true;
-    audioElement.pause();
-    audioElement.src = src;
-    audioElement.loop = loop;
-    audioElement.load();
-    
-    audioElement.oncanplay = () => {
-        audioElement.play()
-            .catch(e => {
-                console.error("Error playing audio:", e);
-            })
-            .finally(() => {
-                 isAudioPlaying = false;
-            });
-    };
-    
-    audioElement.onerror = () => {
-        console.error("Error loading audio source.");
-        isAudioPlaying = false;
-    };
-  }, []);
 
   const playAlarmSound = useCallback((alarm: Alarm) => {
      if (!audio) return;
@@ -1060,5 +1066,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
