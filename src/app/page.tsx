@@ -465,7 +465,7 @@ export default function Home() {
       const updatedTasks = tasks.map(task => {
         const pTask = prioritizedMap.get(task.name);
         if (pTask) {
-          return { ...task, priorityScore: pTask.score, reasoning: pTask.reasoning };
+          return { ...task, priorityScore: pTask.score, reasoning: p.reasoning };
         }
         return task;
       });
@@ -484,36 +484,31 @@ export default function Home() {
   
 const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop = false) => {
     if (isAudioPlaying) {
-        console.log("Audio is already playing, request ignored.");
-        return;
+      console.log("Audio is already playing, request ignored.");
+      return;
     }
     if (!audioElement) return;
 
     isAudioPlaying = true;
-
     audioElement.pause();
     audioElement.src = src;
     audioElement.loop = loop;
     audioElement.load();
-
-    audioElement.oncanplay = () => {
-        audioElement.play()
-            .catch(e => {
-                console.error("Error playing audio:", e);
-                // Don't release lock on error immediately, as it might be an interrupt
-            })
-            .finally(() => {
-                if (!audioElement.loop) {
-                    isAudioPlaying = false;
-                }
-            });
-    };
-
-    audioElement.onerror = () => {
-        console.error("Error loading audio source.");
-        isAudioPlaying = false;
-    };
-}, []);
+    
+    const playPromise = audioElement.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .catch(error => {
+          console.error("Error playing audio:", error);
+          isAudioPlaying = false;
+        })
+        .finally(() => {
+          if (!audioElement.loop) {
+            isAudioPlaying = false;
+          }
+        });
+    }
+  }, []);
 
   const stopAlarmSound = useCallback(() => {
     if (audio && !audio.paused) {
@@ -902,7 +897,7 @@ const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop
             <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {isAudioPlaying && (snoozeAudio && !snoozeAudio.paused) && (
+            {(snoozeAudio && !snoozeAudio.paused) && (
                 <Button variant="destructive" onClick={stopAlarmSound} className="rounded-full shadow-md">
                     <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
                 </Button>
@@ -1066,5 +1061,7 @@ const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop
     </div>
   );
 }
+
+    
 
     
