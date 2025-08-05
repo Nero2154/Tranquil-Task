@@ -82,7 +82,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -368,8 +367,20 @@ export default function Home() {
   };
 
   const handleAlarmFormSubmit = (values: z.infer<typeof alarmSchema>) => {
-    const newAlarm: Alarm = { id: Date.now().toString(), ...values };
-    scheduleAlarmNotification(newAlarm);
+    if (editingAlarm) {
+        const updatedAlarm: Alarm = {
+            ...editingAlarm,
+            ...values,
+        };
+        setAlarms(alarms.map(a => a.id === editingAlarm.id ? updatedAlarm : a));
+        toast({ title: "Alarm updated!" });
+        scheduleAlarmNotification(updatedAlarm);
+    } else {
+        const newAlarm: Alarm = { id: Date.now().toString(), ...values };
+        setAlarms([...alarms, newAlarm]);
+        scheduleAlarmNotification(newAlarm);
+    }
+    
     setEditingAlarm(null);
     setIsAlarmDialogOpen(false);
   };
@@ -447,7 +458,7 @@ export default function Home() {
       const updatedTasks = tasks.map(task => {
         const pTask = prioritizedMap.get(task.name);
         if (pTask) {
-          return { ...task, priorityScore: p.score, reasoning: p.reasoning };
+          return { ...task, priorityScore: pTask.score, reasoning: pTask.reasoning };
         }
         return task;
       });
