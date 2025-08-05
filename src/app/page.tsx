@@ -29,6 +29,7 @@ import {
   Mail,
   MessageSquare,
   PlayCircle,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +75,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { prioritizeTasks } from "@/ai/flows/prioritize-tasks";
 import { motivateTaskCompletion } from "@/ai/flows/motivate-task-completion";
 import { sarcasticAlarmSnooze } from "@/ai/flows/sarcastic-alarm-snooze";
+import { generateImageForTask } from "@/ai/flows/generate-image-for-task";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -101,6 +103,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import Image from 'next/image';
 
 const taskSchema = z.object({
   id: z.string().optional(),
@@ -110,6 +113,7 @@ const taskSchema = z.object({
   deadlineTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
   priority: z.enum(["Low", "Medium", "High"]),
   duration: z.string().optional(),
+  imageDataUri: z.string().optional(),
 });
 
 const alarmSchema = z.object({
@@ -148,6 +152,7 @@ export default function Home() {
   const [isSnoozeAudioPlaying, setIsSnoozeAudioPlaying] = useState(false);
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const snoozeAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
 
@@ -161,11 +166,11 @@ export default function Home() {
     if (typeof window !== "undefined") {
       audioRef.current = new Audio();
       previewAudioRef.current = new Audio();
-      if (audioRef.current) {
-        audioRef.current.onended = () => {
-          if (isSnoozeAudioPlaying) {
-             setIsSnoozeAudioPlaying(false);
-          }
+      snoozeAudioRef.current = new Audio();
+
+      if (snoozeAudioRef.current) {
+        snoozeAudioRef.current.onended = () => {
+          setIsSnoozeAudioPlaying(false);
         }
       }
 
@@ -354,7 +359,8 @@ export default function Home() {
           deadline: deadline.toISOString(),
           priority: values.priority,
           completed: false,
-          duration: values.duration ? parseInt(values.duration, 10) : undefined
+          duration: values.duration ? parseInt(values.duration, 10) : undefined,
+          imageDataUri: values.imageDataUri,
         };
         setTasks([...tasks, newTask]);
         toast({
@@ -509,10 +515,10 @@ export default function Home() {
     setIsLoading(true);
     try {
       const res = await sarcasticAlarmSnooze({ alarmDescription: `${activeAlarm.description} (in ${language})`});
-      if (audioRef.current) {
-        audioRef.current.src = res.audio;
-        audioRef.current.loop = false; // Ensure snooze audio does not loop
-        audioRef.current.play();
+      if (snoozeAudioRef.current) {
+        snoozeAudioRef.current.src = res.audio;
+        snoozeAudioRef.current.loop = false;
+        snoozeAudioRef.current.play();
         setIsSnoozeAudioPlaying(true);
       }
     } catch (error) {
@@ -524,9 +530,9 @@ export default function Home() {
   };
 
   const stopSnoozeJokes = () => {
-    if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+    if (snoozeAudioRef.current) {
+        snoozeAudioRef.current.pause();
+        snoozeAudioRef.current.currentTime = 0;
         setIsSnoozeAudioPlaying(false);
     }
   }
@@ -574,8 +580,36 @@ export default function Home() {
         deadlineDate: defaultDeadline,
         deadlineTime: format(defaultDeadline, 'HH:mm'),
         duration: task?.duration?.toString() || "",
+        imageDataUri: task?.imageDataUri || "",
       },
     });
+
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+    const descriptionValue = form.watch('description');
+    const imageValue = form.watch('imageDataUri');
+
+    const handleGenerateImage = async () => {
+      if (!descriptionValue) {
+        toast({ title: "Please enter a description first.", variant: 'destructive' });
+        return;
+      }
+      setIsGeneratingImage(true);
+      try {
+        const result = await generateImageForTask({ taskDescription: descriptionValue });
+        if (result.imageDataUri) {
+          form.setValue('imageDataUri', result.imageDataUri);
+          toast({ title: "Image generated successfully!" });
+        } else {
+          toast({ title: "Failed to generate image.", variant: 'destructive' });
+        }
+      } catch (error) {
+        console.error("Image generation error:", error);
+        toast({ title: "AI Error", description: "Could not generate image.", variant: "destructive" });
+      } finally {
+        setIsGeneratingImage(false);
+      }
+    };
+
     return (
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onFinished)} className="space-y-4">
@@ -585,6 +619,26 @@ export default function Home() {
           <FormField control={form.control} name="description" render={({ field }) => (
             <FormItem><FormLabel>{t.description}</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
           )} />
+           <div className="flex items-center gap-2">
+              <Button type="button" onClick={handleGenerateImage} disabled={isGeneratingImage || !descriptionValue} className="flex-grow">
+                <ImageIcon className="mr-2 h-4 w-4" />
+                {isGeneratingImage ? "Generating..." : "Generate Image with AI"}
+              </Button>
+           </div>
+            {imageValue && (
+              <div className="relative w-full aspect-video rounded-md overflow-hidden border">
+                <Image src={imageValue} alt="Generated task image" layout="fill" objectFit="cover" />
+                 <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6"
+                    onClick={() => form.setValue('imageDataUri', '')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+              </div>
+            )}
            <div className="grid grid-cols-2 gap-4">
             <FormField control={form.control} name="deadlineDate" render={({ field }) => (
               <FormItem className="flex flex-col"><FormLabel>{t.deadline}</FormLabel>
@@ -719,38 +773,49 @@ export default function Home() {
   };
 
   const TaskItem = ({ task }: { task: Task }) => (
-    <div className="flex items-center space-x-4 p-4 rounded-lg bg-background hover:bg-muted/80 transition-colors">
-      <TooltipProvider><Tooltip><TooltipTrigger>
-        <Checkbox id={task.id} checked={task.completed} onCheckedChange={(checked) => handleTaskComplete(task.id, !!checked)} />
-      </TooltipTrigger><TooltipContent><p>{task.completed ? "Mark as active" : "Mark as completed"}</p></TooltipContent></Tooltip></TooltipProvider>
-      <div className="flex-1">
-        <label htmlFor={task.id} className={cn("font-medium", task.completed && "line-through text-muted-foreground")}>{task.name}</label>
-        <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-x-4 gap-y-1 mt-1">
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            <span>{format(parseISO(task.deadline), "p")}</span>
-          </div>
-          {task.duration && (
+    <div className="flex items-start space-x-4 p-4 rounded-lg bg-background hover:bg-muted/80 transition-colors">
+      <div className="flex-grow flex items-start space-x-4">
+        <TooltipProvider><Tooltip><TooltipTrigger>
+          <Checkbox id={task.id} checked={task.completed} onCheckedChange={(checked) => handleTaskComplete(task.id, !!checked)} className="mt-1" />
+        </TooltipTrigger><TooltipContent><p>{task.completed ? "Mark as active" : "Mark as completed"}</p></TooltipContent></Tooltip></TooltipProvider>
+        
+        <div className="flex-1">
+          <label htmlFor={task.id} className={cn("font-medium", task.completed && "line-through text-muted-foreground")}>{task.name}</label>
+          <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-x-4 gap-y-1 mt-1">
             <div className="flex items-center gap-1">
-                <span>({task.duration} min)</span>
+              <Clock className="h-3 w-3" />
+              <span>{format(parseISO(task.deadline), "p")}</span>
             </div>
-          )}
-          <Badge variant={task.priority === 'High' ? 'destructive' : task.priority === 'Medium' ? 'secondary' : 'outline'}>{task.priority}</Badge>
-          {task.reasoning && (
-             <TooltipProvider>
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-5 w-5"><Info className="h-3 w-3"/></Button>
-                </TooltipTrigger>
-                <TooltipContent><p>{task.reasoning}</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+            {task.duration && (
+              <div className="flex items-center gap-1">
+                  <span>({task.duration} min)</span>
+              </div>
+            )}
+            <Badge variant={task.priority === 'High' ? 'destructive' : task.priority === 'Medium' ? 'secondary' : 'outline'}>{task.priority}</Badge>
+            {task.reasoning && (
+               <TooltipProvider>
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-5 w-5"><Info className="h-3 w-3"/></Button>
+                  </TooltipTrigger>
+                  <TooltipContent><p>{task.reasoning}</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </div>
       </div>
-       <div className="flex items-center">
-            <Button variant="ghost" size="icon" onClick={() => openEditTaskDialog(task)}><Edit className="h-4 w-4 text-muted-foreground" /></Button>
-            <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+      
+      <div className="flex items-center flex-shrink-0">
+          {task.imageDataUri && (
+              <div className="relative w-16 h-16 rounded-md overflow-hidden mr-2">
+                <Image src={task.imageDataUri} alt={task.name} layout="fill" objectFit="cover" />
+              </div>
+          )}
+          <div className="flex flex-col">
+              <Button variant="ghost" size="icon" onClick={() => openEditTaskDialog(task)}><Edit className="h-4 w-4 text-muted-foreground" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+          </div>
        </div>
     </div>
   );
@@ -958,4 +1023,3 @@ export default function Home() {
     </div>
   );
 }
-
