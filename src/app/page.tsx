@@ -85,10 +85,10 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -483,16 +483,15 @@ export default function Home() {
     }
   };
   
-  const stopAlarmSound = () => {
+  const stopAlarmSound = useCallback(() => {
     if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
     }
-  };
+  }, []);
 
   const handleSnooze = async (minutes: number) => {
     if(!activeAlarm) return;
-    stopAlarmSound();
     
     const snoozedTime = addMinutes(new Date(), minutes);
     const newAlarmTime = format(snoozedTime, 'HH:mm');
@@ -504,8 +503,7 @@ export default function Home() {
         description: `${activeAlarm.description} (Snoozed)`
     };
 
-    setAlarms([...alarms, snoozedAlarm]);
-    setActiveAlarm(null);
+    setAlarms(currentAlarms => [...currentAlarms, snoozedAlarm]);
 
     toast({
         title: `Alarm Snoozed for ${minutes} minutes`,
@@ -526,8 +524,15 @@ export default function Home() {
        toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
     } finally {
       setIsLoading(false);
+      setActiveAlarm(null); // Close the dialog after everything is done.
     }
   };
+  
+  const handleDismiss = () => {
+    stopAlarmSound();
+    setActiveAlarm(null);
+  };
+
 
   const stopSnoozeJokes = () => {
     if (snoozeAudioRef.current) {
@@ -566,8 +571,21 @@ export default function Home() {
         setAlarms(alarms.filter(a => a.id !== dueAlarm.id));
       }
     }, 1000 * 10); // Check every 10 seconds for accuracy
-    return () => clearInterval(interval);
-  }, [alarms, setAlarms, activeAlarm]);
+    
+    // Cleanup interval and audio on unmount
+    return () => {
+        clearInterval(interval);
+        stopAlarmSound();
+        if(previewAudioRef.current){
+            previewAudioRef.current.pause();
+            previewAudioRef.current.currentTime = 0;
+        }
+         if(snoozeAudioRef.current){
+            snoozeAudioRef.current.pause();
+            snoozeAudioRef.current.currentTime = 0;
+        }
+    };
+  }, [alarms, setAlarms, activeAlarm, stopAlarmSound]);
   
   const TaskForm = ({ onFinished, task }: { onFinished: (values: z.infer<typeof taskSchema>) => void, task: Task | null }) => {
     const defaultDeadline = task ? parseISO(task.deadline) : new Date();
@@ -1002,7 +1020,7 @@ export default function Home() {
         </div>
       </main>
       
-      <AlertDialog open={!!activeAlarm}>
+      <AlertDialog open={!!activeAlarm} onOpenChange={(open) => !open && handleDismiss()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t.alarmTitle}</AlertDialogTitle>
@@ -1011,11 +1029,11 @@ export default function Home() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-col gap-2">
-             <Button variant="outline" onClick={() => { stopAlarmSound(); setActiveAlarm(null); }}>{t.dismiss}</Button>
+             <Button variant="outline" onClick={handleDismiss}>{t.dismiss}</Button>
              <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={() => handleSnooze(5)} disabled={isLoading}>{t.snooze} 5 min</Button>
-                <Button onClick={() => handleSnooze(10)} disabled={isLoading}>{t.snooze} 10 min</Button>
-                <Button onClick={() => handleSnooze(15)} disabled={isLoading}>{t.snooze} 15 min</Button>
+                <Button onClick={() => { stopAlarmSound(); handleSnooze(5); }} disabled={isLoading}>{t.snooze} 5 min</Button>
+                <Button onClick={() => { stopAlarmSound(); handleSnooze(10); }} disabled={isLoading}>{t.snooze} 10 min</Button>
+                <Button onClick={() => { stopAlarmSound(); handleSnooze(15); }} disabled={isLoading}>{t.snooze} 15 min</Button>
              </div>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1023,3 +1041,4 @@ export default function Home() {
     </div>
   );
 }
+
