@@ -88,7 +88,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription,
+  AlertDialogDescription as AlertDialogDescriptionComponent,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -132,7 +132,11 @@ const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
     { name: "blue", value: "217 91% 60%", foreground: "217 91% 95%" }, // Blue
 ];
 
+// Dedicated audio element for snooze jokes to prevent playback conflicts.
 let snoozeAudio: HTMLAudioElement | null = null;
+if (typeof window !== 'undefined') {
+  snoozeAudio = new Audio();
+}
 
 export default function Home() {
   const [language, setLanguage] = useLocalStorage<Language>("language", "english");
@@ -485,14 +489,12 @@ export default function Home() {
     if (snoozeAudio) {
       snoozeAudio.pause();
       snoozeAudio.currentTime = 0;
-      snoozeAudio = null;
     }
   }, []);
 
   const handleSnooze = async (minutes: number) => {
     if(!activeAlarm) return;
 
-    // Stop currently playing sounds first
     stopAlarmSound();
     
     const snoozedTime = addMinutes(new Date(), minutes);
@@ -513,14 +515,17 @@ export default function Home() {
         description: `Will ring again at ${newAlarmTime}`
     });
 
+    const originalAlarmDescription = activeAlarm.description;
     setActiveAlarm(null); // Close the dialog immediately
     
     // Fire and forget the joke audio
     setIsLoading(true);
     try {
-      const res = await sarcasticAlarmSnooze({ alarmDescription: `${activeAlarm.description} (in ${language})`});
-      snoozeAudio = new Audio(res.audio);
-      snoozeAudio.play().catch(e => console.error("Error playing snooze joke:", e));
+      const res = await sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})`});
+      if (snoozeAudio) {
+        snoozeAudio.src = res.audio;
+        snoozeAudio.play().catch(e => console.error("Error playing snooze joke:", e));
+      }
     } catch (error) {
        console.error("Snooze AI error:", error);
        toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
@@ -1012,9 +1017,9 @@ export default function Home() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t.alarmTitle}</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescriptionComponent>
               {activeAlarm?.description}
-            </AlertDialogDescription>
+            </AlertDialogDescriptionComponent>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-col gap-2">
              <Button variant="outline" onClick={handleDismiss}>{t.dismiss}</Button>
@@ -1029,4 +1034,3 @@ export default function Home() {
     </div>
   );
 }
-
