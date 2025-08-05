@@ -132,6 +132,8 @@ const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
     { name: "blue", value: "217 91% 60%", foreground: "217 91% 95%" }, // Blue
 ];
 
+let snoozeAudio: HTMLAudioElement | null = null;
+
 export default function Home() {
   const [language, setLanguage] = useLocalStorage<Language>("language", "english");
   const [theme, setTheme] = useLocalStorage<ThemeColor>("theme", "default");
@@ -149,10 +151,8 @@ export default function Home() {
 
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSnoozeAudioPlaying, setIsSnoozeAudioPlaying] = useState(false);
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const snoozeAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
 
@@ -166,14 +166,7 @@ export default function Home() {
     if (typeof window !== "undefined") {
       audioRef.current = new Audio();
       previewAudioRef.current = new Audio();
-      snoozeAudioRef.current = new Audio();
-
-      if (snoozeAudioRef.current) {
-        snoozeAudioRef.current.onended = () => {
-          setIsSnoozeAudioPlaying(false);
-        }
-      }
-
+      
       if ("Notification" in window) {
         setNotificationPermission(Notification.permission);
       }
@@ -380,7 +373,8 @@ export default function Home() {
             ...editingAlarm,
             ...values,
         };
-        setAlarms(alarms.map(a => a.id === editingAlarm.id ? updatedAlarm : a));
+        const newAlarms = alarms.map(a => a.id === editingAlarm.id ? updatedAlarm : a);
+        setAlarms(newAlarms);
         toast({ title: "Alarm updated!" });
         scheduleAlarmNotification(updatedAlarm);
     } else {
@@ -488,10 +482,18 @@ export default function Home() {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
     }
+    if (snoozeAudio) {
+      snoozeAudio.pause();
+      snoozeAudio.currentTime = 0;
+      snoozeAudio = null;
+    }
   }, []);
 
   const handleSnooze = async (minutes: number) => {
     if(!activeAlarm) return;
+
+    // Stop currently playing sounds first
+    stopAlarmSound();
     
     const snoozedTime = addMinutes(new Date(), minutes);
     const newAlarmTime = format(snoozedTime, 'HH:mm');
@@ -504,27 +506,26 @@ export default function Home() {
     };
 
     setAlarms(currentAlarms => [...currentAlarms, snoozedAlarm]);
+    scheduleAlarmNotification(snoozedAlarm);
 
     toast({
         title: `Alarm Snoozed for ${minutes} minutes`,
         description: `Will ring again at ${newAlarmTime}`
     });
 
+    setActiveAlarm(null); // Close the dialog immediately
+    
+    // Fire and forget the joke audio
     setIsLoading(true);
     try {
       const res = await sarcasticAlarmSnooze({ alarmDescription: `${activeAlarm.description} (in ${language})`});
-      if (snoozeAudioRef.current) {
-        snoozeAudioRef.current.src = res.audio;
-        snoozeAudioRef.current.loop = false;
-        snoozeAudioRef.current.play();
-        setIsSnoozeAudioPlaying(true);
-      }
+      snoozeAudio = new Audio(res.audio);
+      snoozeAudio.play().catch(e => console.error("Error playing snooze joke:", e));
     } catch (error) {
        console.error("Snooze AI error:", error);
        toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
     } finally {
       setIsLoading(false);
-      setActiveAlarm(null); // Close the dialog after everything is done.
     }
   };
   
@@ -532,15 +533,6 @@ export default function Home() {
     stopAlarmSound();
     setActiveAlarm(null);
   };
-
-
-  const stopSnoozeJokes = () => {
-    if (snoozeAudioRef.current) {
-        snoozeAudioRef.current.pause();
-        snoozeAudioRef.current.currentTime = 0;
-        setIsSnoozeAudioPlaying(false);
-    }
-  }
 
   const playAlarmSound = (alarm: Alarm) => {
     if (!audioRef.current) return;
@@ -579,10 +571,6 @@ export default function Home() {
         if(previewAudioRef.current){
             previewAudioRef.current.pause();
             previewAudioRef.current.currentTime = 0;
-        }
-         if(snoozeAudioRef.current){
-            snoozeAudioRef.current.pause();
-            snoozeAudioRef.current.currentTime = 0;
         }
     };
   }, [alarms, setAlarms, activeAlarm, stopAlarmSound]);
@@ -877,8 +865,8 @@ export default function Home() {
             <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {isSnoozeAudioPlaying && (
-                <Button variant="destructive" onClick={stopSnoozeJokes} className="rounded-full shadow-md">
+            {isLoading && snoozeAudio && (
+                <Button variant="destructive" onClick={stopAlarmSound} className="rounded-full shadow-md">
                     <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
                 </Button>
             )}
@@ -1031,9 +1019,9 @@ export default function Home() {
           <AlertDialogFooter className="flex-col sm:flex-col gap-2">
              <Button variant="outline" onClick={handleDismiss}>{t.dismiss}</Button>
              <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={() => { stopAlarmSound(); handleSnooze(5); }} disabled={isLoading}>{t.snooze} 5 min</Button>
-                <Button onClick={() => { stopAlarmSound(); handleSnooze(10); }} disabled={isLoading}>{t.snooze} 10 min</Button>
-                <Button onClick={() => { stopAlarmSound(); handleSnooze(15); }} disabled={isLoading}>{t.snooze} 15 min</Button>
+                <Button onClick={() => handleSnooze(5)} disabled={isLoading}>{t.snooze} 5 min</Button>
+                <Button onClick={() => handleSnooze(10)} disabled={isLoading}>{t.snooze} 10 min</Button>
+                <Button onClick={() => handleSnooze(15)} disabled={isLoading}>{t.snooze} 15 min</Button>
              </div>
           </AlertDialogFooter>
         </AlertDialogContent>
