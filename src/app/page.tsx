@@ -488,14 +488,38 @@ export default function Home() {
     }
   }, []);
 
+  const playAlarmSound = useCallback((alarm: Alarm) => {
+    if (!audioRef.current) return;
+    
+    let soundSrc = '';
+    if (alarm.sound === 'custom' && alarm.customSoundDataUri) {
+      soundSrc = alarm.customSoundDataUri;
+    } else if (alarm.sound !== 'custom') {
+        soundSrc = presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
+    }
+    
+    if (soundSrc) {
+        audioRef.current.pause();
+        audioRef.current.src = soundSrc;
+        audioRef.current.load();
+        audioRef.current.loop = true;
+
+        if (document.body.contains(audioRef.current)) {
+            audioRef.current.play().catch(error => {
+                console.error("Error playing alarm sound:", error)
+            });
+        }
+    }
+  }, []);
+
   const handleSnooze = (minutes: number) => {
-    if (!activeAlarm) return;
-  
+    const originalAlarm = activeAlarm;
+    if (!originalAlarm) return;
+
     // 1. Immediately stop current audio
     stopAlarmSound();
   
     // 2. Immediately close the alarm dialog (unmount AlertDialog)
-    const originalAlarm = activeAlarm;
     setActiveAlarm(null);
   
     // 3. Fire and forget: schedule the snoozed alarm and play the joke asynchronously
@@ -541,29 +565,6 @@ export default function Home() {
     setActiveAlarm(null);
   };
 
-  const playAlarmSound = useCallback((alarm: Alarm) => {
-    if (!audioRef.current) return;
-    
-    let soundSrc = '';
-    if (alarm.sound === 'custom' && alarm.customSoundDataUri) {
-      soundSrc = alarm.customSoundDataUri;
-    } else if (alarm.sound !== 'custom') {
-        soundSrc = presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
-    }
-    
-    if (soundSrc) {
-        audioRef.current.pause();
-        audioRef.current.src = soundSrc;
-        audioRef.current.load();
-        audioRef.current.loop = true;
-
-        if (document.body.contains(audioRef.current)) {
-            audioRef.current.play().catch(error => {
-                console.error("Error playing alarm sound:", error)
-            });
-        }
-    }
-  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
