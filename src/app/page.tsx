@@ -492,10 +492,10 @@ export default function Home() {
     }
   }, []);
 
-  const handleSnooze = async (minutes: number) => {
+  const handleSnooze = (minutes: number) => {
     if(!activeAlarm) return;
 
-    await stopAlarmSound();
+    stopAlarmSound();
     
     const snoozedTime = addMinutes(new Date(), minutes);
     const newAlarmTime = format(snoozedTime, 'HH:mm');
@@ -520,22 +520,24 @@ export default function Home() {
     
     // Fire and forget the joke audio
     setIsLoading(true);
-    try {
-      const res = await sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})`});
-      if (snoozeAudio) {
-        snoozeAudio.src = res.audio;
-        snoozeAudio.play().catch(e => console.error("Error playing snooze joke:", e));
-      }
-    } catch (error) {
-       console.error("Snooze AI error:", error);
-       toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
+    sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})`})
+        .then(res => {
+            if (snoozeAudio) {
+                snoozeAudio.src = res.audio;
+                snoozeAudio.play().catch(e => console.error("Error playing snooze joke:", e));
+            }
+        })
+        .catch(error => {
+            console.error("Snooze AI error:", error);
+            toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
+        })
+        .finally(() => {
+            setIsLoading(false);
+        });
   };
   
-  const handleDismiss = async () => {
-    await stopAlarmSound();
+  const handleDismiss = () => {
+    stopAlarmSound();
     setActiveAlarm(null);
   };
 
@@ -1037,5 +1039,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
 
     
