@@ -132,11 +132,15 @@ const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
     { name: "blue", value: "217 91% 60%", foreground: "217 91% 95%" }, // Blue
 ];
 
+
 // Dedicated audio element for snooze jokes to prevent playback conflicts.
 let snoozeAudio: HTMLAudioElement | null = null;
 if (typeof window !== 'undefined') {
   snoozeAudio = new Audio();
 }
+
+// Global flag to prevent multiple play calls from overlapping.
+let isAudioPlaying = false;
 
 export default function Home() {
   const [language, setLanguage] = useLocalStorage<Language>("language", "english");
@@ -490,6 +494,7 @@ export default function Home() {
       snoozeAudio.pause();
       snoozeAudio.currentTime = 0;
     }
+    isAudioPlaying = false;
   }, []);
 
   const handleSnooze = (minutes: number) => {
@@ -498,8 +503,7 @@ export default function Home() {
     const originalAlarmDescription = activeAlarm.description;
     
     stopAlarmSound();
-    setActiveAlarm(null); // Close the dialog immediately to avoid unmount conflicts
-
+    
     const snoozedTime = addMinutes(new Date(), minutes);
     const newAlarmTime = format(snoozedTime, 'HH:mm');
 
@@ -512,6 +516,8 @@ export default function Home() {
 
     setAlarms(currentAlarms => [...currentAlarms, snoozedAlarm]);
     scheduleAlarmNotification(snoozedAlarm);
+    
+    setActiveAlarm(null); // Close the dialog immediately to avoid unmount conflicts
 
     toast({
         title: `Alarm Snoozed for ${minutes} minutes`,
@@ -519,7 +525,6 @@ export default function Home() {
     });
 
     // Fire and forget the joke audio after UI updates
-    setIsLoading(true);
     sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})`})
         .then(res => {
             if (snoozeAudio) {
@@ -530,9 +535,6 @@ export default function Home() {
         .catch(error => {
             console.error("Snooze AI error:", error);
             toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
-        })
-        .finally(() => {
-            setIsLoading(false);
         });
   };
   
@@ -541,35 +543,60 @@ export default function Home() {
     setActiveAlarm(null);
   };
 
-  const playAlarmSound = (alarm: Alarm) => {
-    if (!audioRef.current) return;
+  const playAlarmSound = useCallback((alarm: Alarm) => {
+    if (!audioRef.current || isAudioPlaying) return;
     
     let soundSrc = '';
     if (alarm.sound === 'custom' && alarm.customSoundDataUri) {
       soundSrc = alarm.customSoundDataUri;
     } else if (alarm.sound !== 'custom') {
-        soundSrc = presetSounds[alarm.sound];
+        soundSrc = presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
     }
     
     if (soundSrc) {
+        isAudioPlaying = true;
+        
+        // Robust playback protocol
+        audioRef.current.pause();
         audioRef.current.src = soundSrc;
         audioRef.current.loop = true;
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(e => console.error("Error playing alarm sound:", e));
-        }
+        audioRef.current.load(); // Important: load the new source
+
+        // Play only when the media is ready
+        audioRef.current.oncanplay = () => {
+            if (audioRef.current) {
+                const playPromise = audioRef.current.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(e => {
+                        console.error("Error playing alarm sound:", e);
+                        isAudioPlaying = false; // Reset lock on error
+                    }).then(() => {
+                        // Playback started successfully. We don't need to reset the lock here
+                        // as it will be reset by stopAlarmSound.
+                    });
+                } else {
+                     isAudioPlaying = false; // Reset lock if play() is not supported
+                }
+            }
+        };
+
+        // Handle errors during loading
+        audioRef.current.onerror = () => {
+            console.error("Error loading audio source.");
+            isAudioPlaying = false;
+        };
     }
-  }
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (activeAlarm) return; // Don't check for new alarms if one is already active
+      if (activeAlarm || isAudioPlaying) return; // Don't check for new alarms if one is active or audio is playing
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const dueAlarm = alarms.find(alarm => alarm.time === currentTime);
       if(dueAlarm) {
-        playAlarmSound(dueAlarm);
         setActiveAlarm(dueAlarm);
+        playAlarmSound(dueAlarm);
         setAlarms(alarms.filter(a => a.id !== dueAlarm.id));
       }
     }, 1000 * 10); // Check every 10 seconds for accuracy
@@ -583,7 +610,7 @@ export default function Home() {
             if(previewAudioRef.current) previewAudioRef.current.currentTime = 0;
         }
     };
-  }, [alarms, setAlarms, activeAlarm, stopAlarmSound]);
+  }, [alarms, setAlarms, activeAlarm, stopAlarmSound, playAlarmSound]);
   
   const TaskForm = ({ onFinished, task }: { onFinished: (values: z.infer<typeof taskSchema>) => void, task: Task | null }) => {
     const defaultDeadline = task ? parseISO(task.deadline) : new Date();
@@ -1042,3 +1069,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
