@@ -312,7 +312,7 @@ export default function Home() {
     if(relevantTasks.length !== tasks.length) {
         setTasks(relevantTasks);
     }
-  }, []); 
+  }, [tasks, setTasks]); 
 
 
   useEffect(() => {
@@ -536,7 +536,7 @@ export default function Home() {
       
       setAlarms(current => [...current, snoozedAlarm]);
       scheduleAlarmNotification(snoozedAlarm);
-  
+
       toast({
         title: `Alarm Snoozed for ${minutes} minutes`,
         description: `Will ring again at ${newAlarmTime}`
@@ -736,10 +736,21 @@ export default function Home() {
             previewAudioRef.current.src = presetSounds[soundValue as Exclude<AlarmSound, 'custom'>];
             const playPromise = previewAudioRef.current.play();
             if(playPromise !== undefined){
-                playPromise.catch(e => console.error("Error playing preview:", e));
+                playPromise.then(() => {
+                  // Playback successful, nothing to do here
+                }).catch(e => console.error("Error playing preview:", e));
             }
         }
     }
+
+        useEffect(() => {
+            return () => {
+                if (previewAudioRef.current) {
+                    previewAudioRef.current.pause();
+                    previewAudioRef.current.currentTime = 0;
+                }
+            };
+        }, []);
 
     return (
       <Form {...form}>
@@ -1048,3 +1059,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
