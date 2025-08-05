@@ -1,5 +1,5 @@
 
-"use client";
+      "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -133,14 +133,16 @@ const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
 ];
 
 
-// Dedicated audio element for snooze jokes to prevent playback conflicts.
+// Global audio elements and lock to prevent playback race conditions.
+let audio: HTMLAudioElement | null = null;
 let snoozeAudio: HTMLAudioElement | null = null;
+let isAudioPlaying = false; // Lock to prevent overlapping play calls
+
 if (typeof window !== 'undefined') {
+  audio = new Audio();
   snoozeAudio = new Audio();
 }
 
-// Global flag to prevent multiple play calls from overlapping.
-let isAudioPlaying = false;
 
 export default function Home() {
   const [language, setLanguage] = useLocalStorage<Language>("language", "english");
@@ -160,7 +162,6 @@ export default function Home() {
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
 
@@ -172,7 +173,6 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== "undefined") {
-      audioRef.current = new Audio();
       previewAudioRef.current = new Audio();
       
       if ("Notification" in window) {
@@ -279,8 +279,6 @@ export default function Home() {
                         { action: 'dismiss', title: 'Dismiss' },
                     ],
                     requireInteraction: true,
-                    // Note: showTrigger and sound are not standard yet. This relies on browser support.
-                    // The service worker will handle the sound as a fallback.
                 });
                 toast({
                     title: t.toastAlarmSet,
@@ -309,18 +307,17 @@ export default function Home() {
   const todayTasks = activeTasks.filter(task => isToday(parseISO(task.deadline)));
 
   useEffect(() => {
-    // Clean up tasks that were completed before today
     const now = new Date();
     const startOfToday = startOfDay(now);
     const relevantTasks = tasks.filter(task => {
-        if (!task.completed) return true; // Keep active tasks
-        if (!task.completedAt) return true; // Keep completed tasks without a completion date (for safety)
-        return parseISO(task.completedAt) >= startOfToday; // Keep tasks completed today
+        if (!task.completed) return true; 
+        if (!task.completedAt) return true; 
+        return parseISO(task.completedAt) >= startOfToday; 
     });
     if(relevantTasks.length !== tasks.length) {
         setTasks(relevantTasks);
     }
-  }, []); // Runs once on mount
+  }, []); 
 
 
   useEffect(() => {
@@ -347,7 +344,8 @@ export default function Home() {
             ...editingTask, 
             ...values, 
             deadline: deadline.toISOString(),
-            duration: values.duration ? parseInt(values.duration, 10) : undefined
+            duration: values.duration ? parseInt(values.duration, 10) : undefined,
+             imageDataUri: values.imageDataUri,
         };
         setTasks(tasks.map(t => t.id === editingTask.id ? updatedTask : t));
         toast({ title: "Task updated!" });
@@ -430,7 +428,6 @@ export default function Home() {
   }
 
   const deleteAlarm = async (alarmId: string) => {
-    // Also remove the scheduled notification
     if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
         const registration = await navigator.serviceWorker.ready;
         const notifications = await registration.getNotifications({ tag: alarmId });
@@ -486,9 +483,9 @@ export default function Home() {
   };
   
   const stopAlarmSound = useCallback(() => {
-    if (audioRef.current && !audioRef.current.paused) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    if (audio && !audio.paused) {
+      audio.pause();
+      audio.currentTime = 0;
     }
     if (snoozeAudio && !snoozeAudio.paused) {
       snoozeAudio.pause();
@@ -513,9 +510,8 @@ export default function Home() {
         description: `${activeAlarm.description} (Snoozed)`
     };
 
-    setActiveAlarm(null); // Close dialog immediately to prevent unmount issues
+    setActiveAlarm(null); 
 
-    // Schedule snoozed alarm AFTER closing dialog
     setAlarms(currentAlarms => [...currentAlarms, snoozedAlarm]);
     scheduleAlarmNotification(snoozedAlarm);
     
@@ -524,18 +520,18 @@ export default function Home() {
         description: `Will ring again at ${newAlarmTime}`
     });
 
-    // Fire and forget the joke audio after UI updates
-    sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})`})
-        .then(res => {
-            if (snoozeAudio && !isAudioPlaying) {
-                snoozeAudio.src = res.audio;
-                snoozeAudio.play().catch(e => console.error("Error playing snooze joke:", e));
-            }
-        })
-        .catch(error => {
-            console.error("Snooze AI error:", error);
-            toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
-        });
+    setTimeout(() => {
+        sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})`})
+            .then(res => {
+                if (snoozeAudio) {
+                    playAudio(snoozeAudio, res.audio);
+                }
+            })
+            .catch(error => {
+                console.error("Snooze AI error:", error);
+                toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
+            });
+    }, 100);
   };
   
   const handleDismiss = () => {
@@ -543,8 +539,34 @@ export default function Home() {
     setActiveAlarm(null);
   };
 
+  const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop = false) => {
+    if (isAudioPlaying) return;
+    if (!audioElement) return;
+
+    isAudioPlaying = true;
+    audioElement.pause();
+    audioElement.src = src;
+    audioElement.loop = loop;
+    audioElement.load();
+    
+    audioElement.oncanplay = () => {
+        audioElement.play()
+            .catch(e => {
+                console.error("Error playing audio:", e);
+            })
+            .finally(() => {
+                 isAudioPlaying = false;
+            });
+    };
+    
+    audioElement.onerror = () => {
+        console.error("Error loading audio source.");
+        isAudioPlaying = false;
+    };
+  }, []);
+
   const playAlarmSound = useCallback((alarm: Alarm) => {
-    if (!audioRef.current || isAudioPlaying) return;
+     if (!audio) return;
     
     let soundSrc = '';
     if (alarm.sound === 'custom' && alarm.customSoundDataUri) {
@@ -554,39 +576,13 @@ export default function Home() {
     }
     
     if (soundSrc) {
-        isAudioPlaying = true;
-        
-        const audio = audioRef.current;
-        audio.pause();
-        audio.src = soundSrc;
-        audio.loop = true;
-        audio.load();
-
-        // Use oncanplay to ensure the media is ready before playing
-        audio.oncanplay = () => {
-            if (audio) {
-                const playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(e => {
-                        console.error("Error playing alarm sound:", e);
-                        isAudioPlaying = false; // Reset lock on error
-                    });
-                } else {
-                     isAudioPlaying = false; 
-                }
-            }
-        };
-
-        audio.onerror = () => {
-            console.error("Error loading audio source.");
-            isAudioPlaying = false;
-        };
+        playAudio(audio, soundSrc, true);
     }
-  }, []);
+  }, [playAudio]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (activeAlarm || isAudioPlaying) return; // Don't check for new alarms if one is active or audio is playing
+      if (activeAlarm || isAudioPlaying) return; 
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const dueAlarm = alarms.find(alarm => alarm.time === currentTime);
@@ -595,9 +591,8 @@ export default function Home() {
         playAlarmSound(dueAlarm);
         setAlarms(alarms.filter(a => a.id !== dueAlarm.id));
       }
-    }, 1000 * 10); // Check every 10 seconds for accuracy
+    }, 1000 * 10);
     
-    // Cleanup interval and audio on unmount
     return () => {
         clearInterval(interval);
         stopAlarmSound();
