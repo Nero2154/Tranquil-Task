@@ -481,37 +481,15 @@ export default function Home() {
     }
   };
   
-  const stopAlarmSound = useCallback(async () => {
-    const promises = [];
+  const stopAlarmSound = useCallback(() => {
     if (audioRef.current && !audioRef.current.paused) {
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        promises.push(
-            playPromise.then(_ => {
-                audioRef.current?.pause();
-                if (audioRef.current) audioRef.current.currentTime = 0;
-            }).catch(error => {
-                console.error("Audio ref pause failed", error)
-                if (audioRef.current) audioRef.current.currentTime = 0;
-            })
-        );
-      }
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
     if (snoozeAudio && !snoozeAudio.paused) {
-        const playPromise = snoozeAudio.play();
-        if (playPromise !== undefined) {
-            promises.push(
-                playPromise.then(_ => {
-                    snoozeAudio?.pause();
-                    if(snoozeAudio) snoozeAudio.currentTime = 0;
-                }).catch(error => {
-                    console.error("Snooze audio pause failed", error);
-                    if(snoozeAudio) snoozeAudio.currentTime = 0;
-                })
-            );
-        }
+      snoozeAudio.pause();
+      snoozeAudio.currentTime = 0;
     }
-    await Promise.all(promises);
   }, []);
 
   const handleSnooze = async (minutes: number) => {
@@ -574,7 +552,10 @@ export default function Home() {
     if (soundSrc) {
         audioRef.current.src = soundSrc;
         audioRef.current.loop = true;
-        audioRef.current.play().catch(e => console.error("Error playing sound:", e));
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(e => console.error("Error playing sound:", e));
+        }
     }
   }
 
