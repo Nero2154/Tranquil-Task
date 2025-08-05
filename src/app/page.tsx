@@ -484,11 +484,11 @@ export default function Home() {
   
 const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop = false) => {
     if (isAudioPlaying) {
-      return;
+        console.log("Audio is already playing, request ignored.");
+        return;
     }
-    if (!audioElement) {
-      return;
-    }
+    if (!audioElement) return;
+
     isAudioPlaying = true;
 
     audioElement.pause();
@@ -497,20 +497,21 @@ const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop
     audioElement.load();
 
     audioElement.oncanplay = () => {
-      audioElement.play()
-        .catch(e => {
-          console.error("Error playing audio:", e);
-        })
-        .finally(() => {
-          if (!audioElement.loop) {
-            isAudioPlaying = false;
-          }
-        });
+        audioElement.play()
+            .catch(e => {
+                console.error("Error playing audio:", e);
+                // Don't release lock on error immediately, as it might be an interrupt
+            })
+            .finally(() => {
+                if (!audioElement.loop) {
+                    isAudioPlaying = false;
+                }
+            });
     };
 
     audioElement.onerror = () => {
-      console.error("Error loading audio source.");
-      isAudioPlaying = false;
+        console.error("Error loading audio source.");
+        isAudioPlaying = false;
     };
 }, []);
 
@@ -531,6 +532,7 @@ const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop
     const originalAlarmDescription = activeAlarm.description;
     
     stopAlarmSound();
+    setActiveAlarm(null); 
     
     const snoozedTime = addMinutes(new Date(), minutes);
     const newAlarmTime = format(snoozedTime, 'HH:mm');
@@ -541,8 +543,6 @@ const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop
         time: newAlarmTime,
         description: `${activeAlarm.description} (Snoozed)`
     };
-
-    setActiveAlarm(null); 
 
     setAlarms(currentAlarms => [...currentAlarms, snoozedAlarm]);
     scheduleAlarmNotification(snoozedAlarm);
@@ -902,7 +902,7 @@ const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop
             <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {isLoading && (snoozeAudio && !snoozeAudio.paused) && (
+            {isAudioPlaying && (snoozeAudio && !snoozeAudio.paused) && (
                 <Button variant="destructive" onClick={stopAlarmSound} className="rounded-full shadow-md">
                     <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
                 </Button>
@@ -1066,3 +1066,5 @@ const playAudio = useCallback((audioElement: HTMLAudioElement, src: string, loop
     </div>
   );
 }
+
+    
