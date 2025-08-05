@@ -495,8 +495,11 @@ export default function Home() {
   const handleSnooze = (minutes: number) => {
     if(!activeAlarm) return;
 
-    stopAlarmSound();
+    const originalAlarmDescription = activeAlarm.description;
     
+    stopAlarmSound();
+    setActiveAlarm(null); // Close the dialog immediately to avoid unmount conflicts
+
     const snoozedTime = addMinutes(new Date(), minutes);
     const newAlarmTime = format(snoozedTime, 'HH:mm');
 
@@ -515,10 +518,7 @@ export default function Home() {
         description: `Will ring again at ${newAlarmTime}`
     });
 
-    const originalAlarmDescription = activeAlarm.description;
-    setActiveAlarm(null); // Close the dialog immediately
-    
-    // Fire and forget the joke audio
+    // Fire and forget the joke audio after UI updates
     setIsLoading(true);
     sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})`})
         .then(res => {
@@ -556,7 +556,7 @@ export default function Home() {
         audioRef.current.loop = true;
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
-            playPromise.catch(e => console.error("Error playing sound:", e));
+            playPromise.catch(e => console.error("Error playing alarm sound:", e));
         }
     }
   }
@@ -728,7 +728,10 @@ export default function Home() {
     const playPreview = () => {
         if (previewAudioRef.current && soundValue && soundValue !== 'custom') {
             previewAudioRef.current.src = presetSounds[soundValue as Exclude<AlarmSound, 'custom'>];
-            previewAudioRef.current.play().catch(e => console.error("Error playing preview:", e));
+            const playPromise = previewAudioRef.current.play();
+            if(playPromise !== undefined){
+                playPromise.catch(e => console.error("Error playing preview:", e));
+            }
         }
     }
 
@@ -1039,7 +1042,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    
