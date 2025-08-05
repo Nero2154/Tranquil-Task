@@ -490,41 +490,49 @@ export default function Home() {
 
   const handleSnooze = (minutes: number) => {
     if (!activeAlarm) return;
-    const originalAlarmDescription = activeAlarm.description;
-
+  
+    // 1. Immediately stop current audio
     stopAlarmSound();
+  
+    // 2. Immediately close the alarm dialog (unmount AlertDialog)
+    const originalAlarm = activeAlarm;
     setActiveAlarm(null);
-
+  
+    // 3. Fire and forget: schedule the snoozed alarm and play the joke asynchronously
     setTimeout(() => {
-        const snoozedTime = addMinutes(new Date(), minutes);
-        const newAlarmTime = format(snoozedTime, 'HH:mm');
-
-        const snoozedAlarm: Alarm = {
-            ...activeAlarm,
-            id: Date.now().toString(),
-            time: newAlarmTime,
-            description: `${activeAlarm.description} (Snoozed)`
-        };
-
-        setAlarms(currentAlarms => [...currentAlarms, snoozedAlarm]);
-        scheduleAlarmNotification(snoozedAlarm);
-
-        toast({
-            title: `Alarm Snoozed for ${minutes} minutes`,
-            description: `Will ring again at ${newAlarmTime}`
+      const snoozedTime = addMinutes(new Date(), minutes);
+      const newAlarmTime = format(snoozedTime, 'HH:mm');
+  
+      const snoozedAlarm: Alarm = {
+        ...originalAlarm,
+        id: Date.now().toString(),
+        time: newAlarmTime,
+        description: `${originalAlarm.description} (Snoozed)`
+      };
+      
+      setAlarms(current => [...current, snoozedAlarm]);
+      scheduleAlarmNotification(snoozedAlarm);
+  
+      toast({
+        title: `Alarm Snoozed for ${minutes} minutes`,
+        description: `Will ring again at ${newAlarmTime}`
+      });
+  
+      sarcasticAlarmSnooze({ alarmDescription: `${originalAlarm.description} (in ${language})` })
+        .then(res => {
+          if (snoozeAudio) {
+            snoozeAudio.pause();
+            snoozeAudio.src = res.audio;
+            snoozeAudio.load();
+            if (document.body.contains(snoozeAudio)) {
+              snoozeAudio.play().catch(e => console.error("Snooze audio play error:", e));
+            }
+          }
+        })
+        .catch(error => {
+          console.error("Snooze AI error:", error);
+          toast({ title: "Error", description: "Failed to play snooze joke", variant: "destructive" });
         });
-
-        sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})` })
-            .then(res => {
-                if (snoozeAudio) {
-                    snoozeAudio.src = res.audio;
-                    snoozeAudio.play().catch(e => console.error("Snooze audio failed to play:", e));
-                }
-            })
-            .catch(error => {
-                console.error("Snooze AI error:", error);
-                toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
-            });
     }, 100);
   };
   
@@ -534,8 +542,7 @@ export default function Home() {
   };
 
   const playAlarmSound = useCallback((alarm: Alarm) => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    if (!audioRef.current) return;
     
     let soundSrc = '';
     if (alarm.sound === 'custom' && alarm.customSoundDataUri) {
@@ -545,11 +552,15 @@ export default function Home() {
     }
     
     if (soundSrc) {
-        audio.src = soundSrc;
-        audio.loop = true;
-        const playPromise = audio.play();
-        if(playPromise !== undefined) {
-            playPromise.catch(error => console.error("Error playing alarm sound:", error));
+        audioRef.current.pause();
+        audioRef.current.src = soundSrc;
+        audioRef.current.load();
+        audioRef.current.loop = true;
+
+        if (document.body.contains(audioRef.current)) {
+            audioRef.current.play().catch(error => {
+                console.error("Error playing alarm sound:", error)
+            });
         }
     }
   }, []);
