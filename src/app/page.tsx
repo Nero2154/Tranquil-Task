@@ -85,7 +85,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -202,13 +201,17 @@ export default function Home() {
   };
 
   const requestNotificationPermission = async () => {
-    if ("Notification" in window && Notification.permission === "default") {
+    if ("Notification" in window) {
+        if (Notification.permission === 'granted') {
+             toast({ title: "Notifications are already enabled!" });
+             return;
+        }
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
       if (permission === "granted") {
         toast({ title: "Notifications enabled!" });
       } else {
-        toast({ title: "Notifications not enabled.", variant: "destructive" });
+        toast({ title: "Notifications not enabled.", description: "You might miss your alarms!", variant: "destructive" });
       }
     }
   };
@@ -220,14 +223,65 @@ export default function Home() {
     const now = new Date().getTime();
     
     if (notificationTime > now) {
-      setTimeout(() => {
-        new Notification("Task Reminder", {
-          body: `Your task "${task.name}" is due in 5 minutes!`,
-          icon: '/icons/icon-192x192.png',
+      if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(swRegistration => {
+            swRegistration.showNotification("Task Reminder", {
+                body: `Your task "${task.name}" is due in 5 minutes!`,
+                icon: '/icons/icon-192x192.png',
+                timestamp: notificationTime,
+                showTrigger: new (window as any).TimestampTrigger(notificationTime),
+            });
         });
-      }, notificationTime - now);
+      }
     }
   };
+
+    const scheduleAlarmNotification = (alarm: Alarm) => {
+        if (notificationPermission !== 'granted') {
+            requestNotificationPermission();
+            return;
+        }
+
+        const [hours, minutes] = alarm.time.split(':').map(Number);
+        let alarmTime = setMinutes(setHours(new Date(), hours), minutes);
+
+        if (isBefore(alarmTime, new Date())) {
+            alarmTime = addMinutes(alarmTime, 24 * 60); // Schedule for next day if time has passed
+        }
+        
+        const soundSrc = alarm.sound === 'custom' && alarm.customSoundDataUri
+            ? alarm.customSoundDataUri
+            : presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
+
+
+        if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+             navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(t.alarmTitle, {
+                    tag: alarm.id,
+                    body: alarm.description,
+                    icon: '/icons/icon-192x192.png',
+                    timestamp: alarmTime.getTime(),
+                    data: {
+                        soundSrc,
+                        alarmId: alarm.id
+                    },
+                    actions: [
+                        { action: 'snooze-5', title: 'Snooze 5 min' },
+                        { action: 'snooze-10', title: 'Snooze 10 min' },
+                        { action: 'dismiss', title: 'Dismiss' },
+                    ],
+                    requireInteraction: true,
+                    // Note: showTrigger and sound are not standard yet. This relies on browser support.
+                    // The service worker will handle the sound as a fallback.
+                });
+                toast({
+                    title: t.toastAlarmSet,
+                    description: `${alarm.description} at ${alarm.time}`,
+                });
+            });
+        }
+    };
+
 
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => (a.priorityScore || 0) - (b.priorityScore || 0) || new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
@@ -313,18 +367,8 @@ export default function Home() {
   };
 
   const handleAlarmFormSubmit = (values: z.infer<typeof alarmSchema>) => {
-    if (editingAlarm) {
-        const updatedAlarm: Alarm = { ...editingAlarm, ...values };
-        setAlarms(alarms.map(a => a.id === editingAlarm.id ? updatedAlarm : a));
-        toast({ title: "Alarm updated!" });
-    } else {
-        const newAlarm: Alarm = { id: Date.now().toString(), ...values };
-        setAlarms([...alarms, newAlarm]);
-        toast({
-            title: t.toastAlarmSet,
-            description: `${newAlarm.description} at ${newAlarm.time}`,
-        });
-    }
+    const newAlarm: Alarm = { id: Date.now().toString(), ...values };
+    scheduleAlarmNotification(newAlarm);
     setEditingAlarm(null);
     setIsAlarmDialogOpen(false);
   };
@@ -363,7 +407,13 @@ export default function Home() {
     toast({ title: "Task deleted", variant: "destructive" });
   }
 
-  const deleteAlarm = (alarmId: string) => {
+  const deleteAlarm = async (alarmId: string) => {
+    // Also remove the scheduled notification
+    if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+        const registration = await navigator.serviceWorker.ready;
+        const notifications = await registration.getNotifications({ tag: alarmId });
+        notifications.forEach(notification => notification.close());
+    }
     setAlarms(alarms.filter(a => a.id !== alarmId));
     toast({ title: "Alarm deleted", variant: "destructive" });
   }
@@ -396,7 +446,7 @@ export default function Home() {
       const updatedTasks = tasks.map(task => {
         const pTask = prioritizedMap.get(task.name);
         if (pTask) {
-          return { ...task, priorityScore: pTask.score, reasoning: pTask.reasoning };
+          return { ...task, priorityScore: p.score, reasoning: p.reasoning };
         }
         return task;
       });
@@ -593,7 +643,7 @@ export default function Home() {
     
     const playPreview = () => {
         if (previewAudioRef.current && soundValue && soundValue !== 'custom') {
-            previewAudioRef.current.src = presetSounds[soundValue];
+            previewAudioRef.current.src = presetSounds[soundValue as Exclude<AlarmSound, 'custom'>];
             previewAudioRef.current.play();
         }
     }
@@ -757,7 +807,7 @@ export default function Home() {
                     {installPrompt && (
                         <Button onClick={handleInstallClick} className="w-full"><Download className="mr-2" /> {t.addToHome}</Button>
                     )}
-                    {notificationPermission === 'default' && (
+                    {notificationPermission !== 'granted' && (
                         <Button onClick={requestNotificationPermission} variant="outline" className="w-full">Enable Notifications</Button>
                     )}
 
