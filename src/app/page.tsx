@@ -481,21 +481,43 @@ export default function Home() {
     }
   };
   
-  const stopAlarmSound = useCallback(() => {
-    if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
+  const stopAlarmSound = useCallback(async () => {
+    const promises = [];
+    if (audioRef.current && !audioRef.current.paused) {
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        promises.push(
+            playPromise.then(_ => {
+                audioRef.current?.pause();
+                if (audioRef.current) audioRef.current.currentTime = 0;
+            }).catch(error => {
+                console.error("Audio ref pause failed", error)
+                if (audioRef.current) audioRef.current.currentTime = 0;
+            })
+        );
+      }
     }
-    if (snoozeAudio) {
-      snoozeAudio.pause();
-      snoozeAudio.currentTime = 0;
+    if (snoozeAudio && !snoozeAudio.paused) {
+        const playPromise = snoozeAudio.play();
+        if (playPromise !== undefined) {
+            promises.push(
+                playPromise.then(_ => {
+                    snoozeAudio?.pause();
+                    if(snoozeAudio) snoozeAudio.currentTime = 0;
+                }).catch(error => {
+                    console.error("Snooze audio pause failed", error);
+                    if(snoozeAudio) snoozeAudio.currentTime = 0;
+                })
+            );
+        }
     }
+    await Promise.all(promises);
   }, []);
 
   const handleSnooze = async (minutes: number) => {
     if(!activeAlarm) return;
 
-    stopAlarmSound();
+    await stopAlarmSound();
     
     const snoozedTime = addMinutes(new Date(), minutes);
     const newAlarmTime = format(snoozedTime, 'HH:mm');
@@ -534,8 +556,8 @@ export default function Home() {
     }
   };
   
-  const handleDismiss = () => {
-    stopAlarmSound();
+  const handleDismiss = async () => {
+    await stopAlarmSound();
     setActiveAlarm(null);
   };
 
@@ -575,7 +597,7 @@ export default function Home() {
         stopAlarmSound();
         if(previewAudioRef.current){
             previewAudioRef.current.pause();
-            previewAudioRef.current.currentTime = 0;
+            if(previewAudioRef.current) previewAudioRef.current.currentTime = 0;
         }
     };
   }, [alarms, setAlarms, activeAlarm, stopAlarmSound]);
@@ -723,7 +745,7 @@ export default function Home() {
     const playPreview = () => {
         if (previewAudioRef.current && soundValue && soundValue !== 'custom') {
             previewAudioRef.current.src = presetSounds[soundValue as Exclude<AlarmSound, 'custom'>];
-            previewAudioRef.current.play();
+            previewAudioRef.current.play().catch(e => console.error("Error playing preview:", e));
         }
     }
 
@@ -870,7 +892,7 @@ export default function Home() {
             <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {isLoading && snoozeAudio && (
+            {isLoading && (snoozeAudio && !snoozeAudio.paused) && (
                 <Button variant="destructive" onClick={stopAlarmSound} className="rounded-full shadow-md">
                     <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
                 </Button>
@@ -1034,3 +1056,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
