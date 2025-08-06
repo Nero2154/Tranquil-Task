@@ -229,9 +229,7 @@ export default function Home() {
         navigator.serviceWorker.ready.then(swRegistration => {
             swRegistration.showNotification("Task Reminder", {
                 body: `Your task "${task.name}" is due in 5 minutes!`,
-                icon: '/icons/icon-192x192.png',
-                timestamp: notificationTime,
-                showTrigger: new (window as any).TimestampTrigger(notificationTime),
+                icon: '/tranquil_icon.png',
             });
         });
       }
@@ -260,15 +258,14 @@ export default function Home() {
               registration.showNotification(t.alarmTitle, {
                   tag: alarm.id,
                   body: alarm.description,
-                  icon: '/icons/icon-192x192.png',
+                  icon: '/tranquil_icon.png',
                   timestamp: alarmTime.getTime(),
                   data: {
                       soundSrc,
                       alarmId: alarm.id
                   },
                   actions: [
-                      { action: 'snooze-5', title: 'Snooze 5 min' },
-                      { action: 'snooze-10', title: 'Snooze 10 min' },
+                      { action: 'snooze', title: 'Snooze 5 min' },
                       { action: 'dismiss', title: 'Dismiss' },
                   ],
                   requireInteraction: true,
