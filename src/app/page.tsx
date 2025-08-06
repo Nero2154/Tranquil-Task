@@ -494,22 +494,23 @@ export default function Home() {
         audioRef.current.loop = true;
 
         if (document.body.contains(audioRef.current)) {
-            audioRef.current.play().catch(() => {});
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    // Ignore errors from race conditions
+                });
+            }
         }
     }
   }, []);
 
   const handleSnooze = (minutes: number) => {
+    if (!activeAlarm) return;
     const originalAlarm = activeAlarm;
-    if (!originalAlarm) return;
-  
-    // 1. Immediately stop current audio
+
     stopAlarmSound();
-  
-    // 2. Immediately close the alarm dialog
     setActiveAlarm(null);
   
-    // 3. Fire and forget: schedule the snoozed alarm and play the joke asynchronously
     setTimeout(() => {
       const snoozedTime = addMinutes(new Date(), minutes);
       const newAlarmTime = format(snoozedTime, 'HH:mm');
@@ -1042,3 +1043,7 @@ export default function Home() {
     </div>
   );
 }
+
+    
+
+    
