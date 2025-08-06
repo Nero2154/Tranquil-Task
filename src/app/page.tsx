@@ -151,8 +151,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const snoozeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
+  const jokeAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   
   const [isMounted, setIsMounted] = useState(false);
@@ -163,9 +163,10 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== "undefined") {
-      audioRef.current = new Audio();
-      snoozeAudioRef.current = new Audio();
-      previewAudioRef.current = new Audio();
+      // Persist audio elements across renders
+      if (!alarmAudioRef.current) alarmAudioRef.current = new Audio();
+      if (!jokeAudioRef.current) jokeAudioRef.current = new Audio();
+      if (!previewAudioRef.current) previewAudioRef.current = new Audio();
       
       if ("Notification" in window) {
         setNotificationPermission(Notification.permission);
@@ -227,50 +228,48 @@ export default function Home() {
     }
   };
 
-    const scheduleAlarmNotification = (alarm: Alarm) => {
-        if (notificationPermission !== 'granted') {
-            requestNotificationPermission();
-            return;
-        }
+  const scheduleAlarmNotification = (alarm: Alarm) => {
+      if (notificationPermission !== 'granted') {
+          requestNotificationPermission();
+          return;
+      }
 
-        const [hours, minutes] = alarm.time.split(':').map(Number);
-        let alarmTime = setMinutes(setHours(new Date(), hours), minutes);
+      const [hours, minutes] = alarm.time.split(':').map(Number);
+      let alarmTime = setMinutes(setHours(new Date(), hours), minutes);
 
-        if (isBefore(alarmTime, new Date())) {
-            alarmTime = addMinutes(alarmTime, 24 * 60); // Schedule for next day if time has passed
-        }
-        
-        const soundSrc = alarm.sound === 'custom' && alarm.customSoundDataUri
-            ? alarm.customSoundDataUri
-            : presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
+      if (isBefore(alarmTime, new Date())) {
+          alarmTime = addMinutes(alarmTime, 24 * 60); // Schedule for next day if time has passed
+      }
+      
+      const soundSrc = alarm.sound === 'custom' && alarm.customSoundDataUri
+          ? alarm.customSoundDataUri
+          : presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
 
-
-        if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-             navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification(t.alarmTitle, {
-                    tag: alarm.id,
-                    body: alarm.description,
-                    icon: '/icons/icon-192x192.png',
-                    timestamp: alarmTime.getTime(),
-                    data: {
-                        soundSrc,
-                        alarmId: alarm.id
-                    },
-                    actions: [
-                        { action: 'snooze-5', title: 'Snooze 5 min' },
-                        { action: 'snooze-10', title: 'Snooze 10 min' },
-                        { action: 'dismiss', title: 'Dismiss' },
-                    ],
-                    requireInteraction: true,
-                });
-                toast({
-                    title: t.toastAlarmSet,
-                    description: `${alarm.description} at ${alarm.time}`,
-                });
-            });
-        }
-    };
-
+      if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then(registration => {
+              registration.showNotification(t.alarmTitle, {
+                  tag: alarm.id,
+                  body: alarm.description,
+                  icon: '/icons/icon-192x192.png',
+                  timestamp: alarmTime.getTime(),
+                  data: {
+                      soundSrc,
+                      alarmId: alarm.id
+                  },
+                  actions: [
+                      { action: 'snooze-5', title: 'Snooze 5 min' },
+                      { action: 'snooze-10', title: 'Snooze 10 min' },
+                      { action: 'dismiss', title: 'Dismiss' },
+                  ],
+                  requireInteraction: true,
+              });
+              toast({
+                  title: t.toastAlarmSet,
+                  description: `${alarm.description} at ${alarm.time}`,
+              });
+          });
+      }
+  };
 
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => (a.priorityScore || 0) - (b.priorityScore || 0) || new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
@@ -463,33 +462,36 @@ export default function Home() {
     }
   };
   
-    const stopAlarmSound = useCallback(() => {
-        if (audioRef.current && !audioRef.current.paused) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-        }
-        if (snoozeAudioRef.current && !snoozeAudioRef.current.paused) {
-            snoozeAudioRef.current.pause();
-            snoozeAudioRef.current.currentTime = 0;
-        }
-    }, []);
-
-    const playAudio = useCallback((audioElement: HTMLAudioElement | null, src: string, loop = false) => {
+    const playAudio = useCallback((audioRef: React.RefObject<HTMLAudioElement>, src: string, loop = false) => {
+        const audioElement = audioRef.current;
         if (!audioElement || !src) return;
-        
-        stopAlarmSound();
 
         audioElement.pause();
         audioElement.src = src;
         audioElement.loop = loop;
         audioElement.load();
 
-        if (document.body.contains(audioElement)) {
-            audioElement.play().catch(e => {
-                console.error("Audio playback error:", e);
+        const playPromise = audioElement.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                // Autoplay was prevented. This is common.
+                // We can ignore this error as user interaction will eventually trigger it.
             });
         }
-    }, [stopAlarmSound]);
+    }, []);
+
+    const stopAudio = useCallback((audioRef: React.RefObject<HTMLAudioElement>) => {
+        const audioElement = audioRef.current;
+        if (audioElement && !audioElement.paused) {
+            audioElement.pause();
+            audioElement.currentTime = 0;
+        }
+    }, []);
+
+    const stopAllSounds = useCallback(() => {
+        stopAudio(alarmAudioRef);
+        stopAudio(jokeAudioRef);
+    }, [stopAudio]);
 
     const playAlarmSound = useCallback((alarm: Alarm) => {
         let soundSrc = '';
@@ -500,27 +502,32 @@ export default function Home() {
         }
         
         if (soundSrc) {
-            playAudio(audioRef.current, soundSrc, true);
+            playAudio(alarmAudioRef, soundSrc, true);
         }
     }, [playAudio]);
 
 
   const handleSnooze = (minutes: number) => {
     if (!activeAlarm) return;
-    const originalAlarm = activeAlarm;
+    
+    const originalAlarmDescription = activeAlarm.description;
 
-    stopAlarmSound();
+    // 1. Immediately stop the current alarm sound.
+    stopAudio(alarmAudioRef);
+
+    // 2. Immediately close the dialog.
     setActiveAlarm(null);
   
+    // 3. Use setTimeout to decouple the UI update from the new audio action.
     setTimeout(() => {
       const snoozedTime = addMinutes(new Date(), minutes);
       const newAlarmTime = format(snoozedTime, 'HH:mm');
   
       const snoozedAlarm: Alarm = {
-        ...originalAlarm,
+        ...activeAlarm,
         id: Date.now().toString(),
         time: newAlarmTime,
-        description: `${originalAlarm.description} (Snoozed)`
+        description: `${originalAlarmDescription} (Snoozed)`
       };
       
       setAlarms(current => [...current, snoozedAlarm]);
@@ -531,20 +538,20 @@ export default function Home() {
         description: `Will ring again at ${newAlarmTime}`
       });
   
-      sarcasticAlarmSnooze({ alarmDescription: `${originalAlarm.description} (in ${language})` })
+      sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})` })
         .then(res => {
           if (res.audio) {
-            playAudio(snoozeAudioRef.current, res.audio, false);
+            playAudio(jokeAudioRef, res.audio, false);
           }
         })
         .catch(() => {
           toast({ title: "Error", description: "Failed to play snooze joke", variant: "destructive" });
         });
-    }, 200);
+    }, 200); // 200ms delay to ensure dialog is unmounted.
   };
   
   const handleDismiss = () => {
-    stopAlarmSound();
+    stopAudio(alarmAudioRef);
     setActiveAlarm(null);
   };
 
@@ -552,28 +559,29 @@ export default function Home() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (activeAlarm) return;
+
       const now = new Date();
-      
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
       const dueAlarmIndex = alarms.findIndex(alarm => alarm.time === currentTime);
       
       if(dueAlarmIndex > -1) {
         const dueAlarm = alarms[dueAlarmIndex];
+        
+        // Remove alarm from list to prevent re-triggering
+        const updatedAlarms = alarms.filter((_, index) => index !== dueAlarmIndex);
+        setAlarms(updatedAlarms);
+
+        // Set as active and play sound
         setActiveAlarm(dueAlarm);
         playAlarmSound(dueAlarm);
-        setAlarms(currentAlarms => currentAlarms.filter((_, index) => index !== dueAlarmIndex));
       }
     }, 1000);
     
     return () => {
         clearInterval(interval);
-        stopAlarmSound();
-        if(previewAudioRef.current){
-            previewAudioRef.current.pause();
-            previewAudioRef.current.currentTime = 0;
-        }
     };
-  }, [alarms, setAlarms, activeAlarm, stopAlarmSound, playAlarmSound]);
+  }, [alarms, setAlarms, activeAlarm, playAlarmSound]);
   
   const TaskForm = ({ onFinished, task }: { onFinished: (values: z.infer<typeof taskSchema>) => void, task: Task | null }) => {
     const defaultDeadline = task ? parseISO(task.deadline) : new Date();
@@ -716,22 +724,16 @@ export default function Home() {
     
     const playPreview = () => {
         if (previewAudioRef.current && soundValue && soundValue !== 'custom') {
-            previewAudioRef.current.src = presetSounds[soundValue as Exclude<AlarmSound, 'custom'>];
-            const playPromise = previewAudioRef.current.play();
-            if(playPromise !== undefined){
-                playPromise.then(() => {}).catch(() => {});
-            }
+            const soundSrc = presetSounds[soundValue as Exclude<AlarmSound, 'custom'>];
+            playAudio(previewAudioRef, soundSrc, false);
         }
     }
 
-        useEffect(() => {
-            return () => {
-                if (previewAudioRef.current) {
-                    previewAudioRef.current.pause();
-                    previewAudioRef.current.currentTime = 0;
-                }
-            };
-        }, []);
+    useEffect(() => {
+        return () => {
+            stopAudio(previewAudioRef);
+        };
+    }, [stopAudio]);
 
     return (
       <Form {...form}>
@@ -876,8 +878,8 @@ export default function Home() {
             <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {(snoozeAudioRef.current && !snoozeAudioRef.current.paused) && (
-                <Button variant="destructive" onClick={stopAlarmSound} className="rounded-full shadow-md">
+            {(jokeAudioRef.current && !jokeAudioRef.current.paused) && (
+                <Button variant="destructive" onClick={() => stopAudio(jokeAudioRef)} className="rounded-full shadow-md">
                     <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
                 </Button>
             )}
