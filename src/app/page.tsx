@@ -20,14 +20,11 @@ import {
   Upload,
   Trash2,
   Edit,
-  Download,
   ListTodo,
   AlertCircle,
   MicOff,
-  Lightbulb,
   Clock,
   Mail,
-  MessageSquare,
   PlayCircle,
   ImageIcon,
 } from "lucide-react";
@@ -151,26 +148,22 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
-  const jokeAudioRef = useRef<HTMLAudioElement | null>(null);
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const snoozeAudioRef = useRef<HTMLAudioElement | null>(null);
   
   const [isMounted, setIsMounted] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState("default");
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isJokePlaying, setIsJokePlaying] = useState(false);
 
 
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== "undefined") {
-      // Persist audio elements across renders
-      if (!alarmAudioRef.current) alarmAudioRef.current = new Audio();
-      if (!jokeAudioRef.current) {
-        jokeAudioRef.current = new Audio();
-        jokeAudioRef.current.onended = () => setIsJokePlaying(false);
+      if (!audioRef.current) audioRef.current = new Audio();
+      if (!snoozeAudioRef.current) {
+        snoozeAudioRef.current = new Audio();
+        snoozeAudioRef.current.onended = () => setIsJokePlaying(false);
       }
-      if (!previewAudioRef.current) previewAudioRef.current = new Audio();
       
       if ("Notification" in window) {
         setNotificationPermission(Notification.permission);
@@ -179,29 +172,15 @@ export default function Home() {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
       }
-      
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        setInstallPrompt(e);
-      });
     }
 
     return () => {
-      if (jokeAudioRef.current) {
-        jokeAudioRef.current.onended = null;
+      if (snoozeAudioRef.current) {
+        snoozeAudioRef.current.onended = null;
       }
     }
   }, []);
   
-  const handleInstallClick = () => {
-    if (installPrompt) {
-      installPrompt.prompt();
-      installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
-        setInstallPrompt(null);
-      });
-    }
-  };
-
   const requestNotificationPermission = async () => {
     if ("Notification" in window) {
         if (Notification.permission === 'granted') {
@@ -469,27 +448,25 @@ export default function Home() {
     }
   };
   
-    const playAudio = useCallback((audioRef: React.RefObject<HTMLAudioElement>, src: string, loop = false) => {
-        const audioElement = audioRef.current;
-        if (!audioElement || !src) return;
-
-        audioElement.pause();
-        audioElement.src = src;
-        audioElement.loop = loop;
-        audioElement.load();
-
-        const playPromise = audioElement.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(error => {});
+    const playAudio = useCallback((ref: React.RefObject<HTMLAudioElement>, src: string, loop = false) => {
+        const audio = ref.current;
+        if (!audio) return;
+        audio.pause();
+        audio.src = src;
+        audio.loop = loop;
+        audio.load();
+        const playPromise = audio.play();
+        if (playPromise) {
+            playPromise.catch(() => {});
         }
     }, []);
 
-    const stopAudio = useCallback((audioRef: React.RefObject<HTMLAudioElement>) => {
-        const audioElement = audioRef.current;
-        if (audioElement && !audioElement.paused) {
-            audioElement.pause();
-            audioElement.currentTime = 0;
-            if (audioRef === jokeAudioRef) {
+    const stopAudio = useCallback((ref: React.RefObject<HTMLAudioElement>) => {
+        const audio = ref.current;
+        if (audio && !audio.paused) {
+            audio.pause();
+            audio.currentTime = 0;
+            if (ref === snoozeAudioRef) {
                 setIsJokePlaying(false);
             }
         }
@@ -502,9 +479,8 @@ export default function Home() {
         } else if (alarm.sound !== 'custom') {
             soundSrc = presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
         }
-        
         if (soundSrc) {
-            playAudio(alarmAudioRef, soundSrc, true);
+            playAudio(audioRef, soundSrc, true);
         }
     }, [playAudio]);
 
@@ -513,44 +489,46 @@ export default function Home() {
     if (!activeAlarm) return;
     
     const originalAlarmDescription = activeAlarm.description;
-
-    stopAudio(alarmAudioRef);
+    
+    stopAudio(audioRef);
     setActiveAlarm(null);
   
     setTimeout(() => {
-      const snoozedTime = addMinutes(new Date(), minutes);
-      const newAlarmTime = format(snoozedTime, 'HH:mm');
-  
-      const snoozedAlarm: Alarm = {
-        ...activeAlarm,
-        id: Date.now().toString(),
-        time: newAlarmTime,
-        description: `${originalAlarmDescription} (Snoozed)`
-      };
-      
-      setAlarms(current => [...current, snoozedAlarm]);
-      scheduleAlarmNotification(snoozedAlarm);
+        const snoozedTime = addMinutes(new Date(), minutes);
+        const newAlarmTime = format(snoozedTime, 'HH:mm');
 
-      toast({
-        title: `Alarm Snoozed for ${minutes} minutes`,
-        description: `Will ring again at ${newAlarmTime}`
-      });
-  
-      sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})` })
-        .then(res => {
-          if (res.audio && jokeAudioRef.current) {
-            playAudio(jokeAudioRef, res.audio, false);
-            setIsJokePlaying(true);
-          }
-        })
-        .catch(() => {
-          toast({ title: "Error", description: "Failed to play snooze joke", variant: "destructive" });
+        const snoozedAlarm: Alarm = {
+            ...activeAlarm,
+            id: Date.now().toString(),
+            time: newAlarmTime,
+            description: `${originalAlarmDescription} (Snoozed)`
+        };
+        
+        setAlarms(current => [...current, snoozedAlarm]);
+        scheduleAlarmNotification(snoozedAlarm);
+
+        toast({
+            title: `Alarm Snoozed for ${minutes} minutes`,
+            description: `Will ring again at ${newAlarmTime}`
         });
     }, 200);
+
+    sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})` })
+    .then(res => {
+        if (res.audio) {
+            setTimeout(() => {
+                playAudio(snoozeAudioRef, res.audio, false);
+                setIsJokePlaying(true);
+            }, 500); // Delay to ensure dialog is gone
+        }
+    })
+    .catch(() => {
+        toast({ title: "Error", description: "Failed to play snooze joke", variant: "destructive" });
+    });
   };
   
   const handleDismiss = () => {
-    stopAudio(alarmAudioRef);
+    stopAudio(audioRef);
     setActiveAlarm(null);
   };
 
@@ -720,15 +698,15 @@ export default function Home() {
     };
     
     const playPreview = () => {
-        if (previewAudioRef.current && soundValue && soundValue !== 'custom') {
+        if (soundValue && soundValue !== 'custom') {
             const soundSrc = presetSounds[soundValue as Exclude<AlarmSound, 'custom'>];
-            playAudio(previewAudioRef, soundSrc, false);
+            playAudio(audioRef, soundSrc, false);
         }
     }
 
     useEffect(() => {
         return () => {
-            stopAudio(previewAudioRef);
+            stopAudio(audioRef);
         };
     }, [stopAudio]);
 
@@ -876,8 +854,8 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             {isJokePlaying && (
-                <Button variant="destructive" onClick={() => stopAudio(jokeAudioRef)} className="rounded-full shadow-md">
-                    <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
+                <Button variant="destructive" onClick={() => stopAudio(snoozeAudioRef)} className="rounded-full shadow-md">
+                    <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Joke</span>
                 </Button>
             )}
             <Dialog open={isTaskDialogOpen} onOpenChange={(open) => { setIsTaskDialogOpen(open); if(!open) setEditingTask(null);}}>
@@ -899,9 +877,6 @@ export default function Home() {
                 <DropdownMenuLabel>{t.settings}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="p-2 space-y-2">
-                    {installPrompt && (
-                        <Button onClick={handleInstallClick} className="w-full"><Download className="mr-2" /> {t.addToHome}</Button>
-                    )}
                     {notificationPermission !== 'granted' && (
                         <Button onClick={requestNotificationPermission} variant="outline" className="w-full">Enable Notifications</Button>
                     )}
