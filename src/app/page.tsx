@@ -175,11 +175,7 @@ export default function Home() {
       }
 
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').then(function(registration) {
-          console.log('Service Worker registered with scope:', registration.scope);
-        }).catch(function(error) {
-          console.log('Service Worker registration failed:', error);
-        });
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
       }
       
       window.addEventListener('beforeinstallprompt', (e) => {
@@ -193,11 +189,6 @@ export default function Home() {
     if (installPrompt) {
       installPrompt.prompt();
       installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
-        if (choiceResult.outcome === 'accepted') {
-          console.log('User accepted the install prompt');
-        } else {
-          console.log('User dismissed the install prompt');
-        }
         setInstallPrompt(null);
       });
     }
@@ -407,7 +398,6 @@ export default function Home() {
             description: res.motivationalMessage,
           });
         } catch (error) {
-          console.error("Motivation AI error:", error);
           toast({
             title: t.toastTaskCompleted,
             description: "Great job!",
@@ -470,7 +460,6 @@ export default function Home() {
         description: t.toastPrioritizedDescription,
       });
     } catch (error) {
-      console.error("Prioritization AI error:", error);
       toast({ title: t.errorAITitle, description: t.errorAIDescription, variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -505,9 +494,7 @@ export default function Home() {
         audioRef.current.loop = true;
 
         if (document.body.contains(audioRef.current)) {
-            audioRef.current.play().catch(error => {
-                console.error("Error playing alarm sound:", error)
-            });
+            audioRef.current.play().catch(() => {});
         }
     }
   }, []);
@@ -515,11 +502,11 @@ export default function Home() {
   const handleSnooze = (minutes: number) => {
     const originalAlarm = activeAlarm;
     if (!originalAlarm) return;
-
+  
     // 1. Immediately stop current audio
     stopAlarmSound();
   
-    // 2. Immediately close the alarm dialog (unmount AlertDialog)
+    // 2. Immediately close the alarm dialog
     setActiveAlarm(null);
   
     // 3. Fire and forget: schedule the snoozed alarm and play the joke asynchronously
@@ -549,12 +536,11 @@ export default function Home() {
             snoozeAudio.src = res.audio;
             snoozeAudio.load();
             if (document.body.contains(snoozeAudio)) {
-              snoozeAudio.play().catch(e => console.error("Snooze audio play error:", e));
+              snoozeAudio.play().catch(() => {});
             }
           }
         })
-        .catch(error => {
-          console.error("Snooze AI error:", error);
+        .catch(() => {
           toast({ title: "Error", description: "Failed to play snooze joke", variant: "destructive" });
         });
     }, 100);
@@ -625,7 +611,6 @@ export default function Home() {
           toast({ title: "Failed to generate image.", variant: 'destructive' });
         }
       } catch (error) {
-        console.error("Image generation error:", error);
         toast({ title: "AI Error", description: "Could not generate image.", variant: "destructive" });
       } finally {
         setIsGeneratingImage(false);
@@ -736,9 +721,7 @@ export default function Home() {
             previewAudioRef.current.src = presetSounds[soundValue as Exclude<AlarmSound, 'custom'>];
             const playPromise = previewAudioRef.current.play();
             if(playPromise !== undefined){
-                playPromise.then(() => {
-                  // Playback successful, nothing to do here
-                }).catch(e => console.error("Error playing preview:", e));
+                playPromise.then(() => {}).catch(() => {});
             }
         }
     }
@@ -1059,5 +1042,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
