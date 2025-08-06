@@ -158,6 +158,7 @@ export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState("default");
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isJokePlaying, setIsJokePlaying] = useState(false);
 
 
   useEffect(() => {
@@ -165,7 +166,10 @@ export default function Home() {
     if (typeof window !== "undefined") {
       // Persist audio elements across renders
       if (!alarmAudioRef.current) alarmAudioRef.current = new Audio();
-      if (!jokeAudioRef.current) jokeAudioRef.current = new Audio();
+      if (!jokeAudioRef.current) {
+        jokeAudioRef.current = new Audio();
+        jokeAudioRef.current.onended = () => setIsJokePlaying(false);
+      }
       if (!previewAudioRef.current) previewAudioRef.current = new Audio();
       
       if ("Notification" in window) {
@@ -180,6 +184,12 @@ export default function Home() {
         e.preventDefault();
         setInstallPrompt(e);
       });
+    }
+
+    return () => {
+      if (jokeAudioRef.current) {
+        jokeAudioRef.current.onended = null;
+      }
     }
   }, []);
   
@@ -473,10 +483,7 @@ export default function Home() {
 
         const playPromise = audioElement.play();
         if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                // Autoplay was prevented. This is common.
-                // We can ignore this error as user interaction will eventually trigger it.
-            });
+            playPromise.catch(error => {});
         }
     }, []);
 
@@ -485,13 +492,11 @@ export default function Home() {
         if (audioElement && !audioElement.paused) {
             audioElement.pause();
             audioElement.currentTime = 0;
+            if (audioRef === jokeAudioRef) {
+                setIsJokePlaying(false);
+            }
         }
     }, []);
-
-    const stopAllSounds = useCallback(() => {
-        stopAudio(alarmAudioRef);
-        stopAudio(jokeAudioRef);
-    }, [stopAudio]);
 
     const playAlarmSound = useCallback((alarm: Alarm) => {
         let soundSrc = '';
@@ -512,13 +517,9 @@ export default function Home() {
     
     const originalAlarmDescription = activeAlarm.description;
 
-    // 1. Immediately stop the current alarm sound.
     stopAudio(alarmAudioRef);
-
-    // 2. Immediately close the dialog.
     setActiveAlarm(null);
   
-    // 3. Use setTimeout to decouple the UI update from the new audio action.
     setTimeout(() => {
       const snoozedTime = addMinutes(new Date(), minutes);
       const newAlarmTime = format(snoozedTime, 'HH:mm');
@@ -540,14 +541,15 @@ export default function Home() {
   
       sarcasticAlarmSnooze({ alarmDescription: `${originalAlarmDescription} (in ${language})` })
         .then(res => {
-          if (res.audio) {
+          if (res.audio && jokeAudioRef.current) {
             playAudio(jokeAudioRef, res.audio, false);
+            setIsJokePlaying(true);
           }
         })
         .catch(() => {
           toast({ title: "Error", description: "Failed to play snooze joke", variant: "destructive" });
         });
-    }, 200); // 200ms delay to ensure dialog is unmounted.
+    }, 200);
   };
   
   const handleDismiss = () => {
@@ -568,11 +570,9 @@ export default function Home() {
       if(dueAlarmIndex > -1) {
         const dueAlarm = alarms[dueAlarmIndex];
         
-        // Remove alarm from list to prevent re-triggering
         const updatedAlarms = alarms.filter((_, index) => index !== dueAlarmIndex);
         setAlarms(updatedAlarms);
 
-        // Set as active and play sound
         setActiveAlarm(dueAlarm);
         playAlarmSound(dueAlarm);
       }
@@ -878,7 +878,7 @@ export default function Home() {
             <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {(jokeAudioRef.current && !jokeAudioRef.current.paused) && (
+            {isJokePlaying && (
                 <Button variant="destructive" onClick={() => stopAudio(jokeAudioRef)} className="rounded-full shadow-md">
                     <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
                 </Button>
@@ -1042,5 +1042,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
