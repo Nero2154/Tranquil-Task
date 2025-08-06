@@ -150,12 +150,11 @@ export default function Home() {
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const snoozeAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-
   const [isMounted, setIsMounted] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState("default");
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -473,37 +472,24 @@ export default function Home() {
             snoozeAudioRef.current.pause();
             snoozeAudioRef.current.currentTime = 0;
         }
-        setIsAudioPlaying(false);
     }, []);
 
     const playAudio = useCallback((audioElement: HTMLAudioElement | null, src: string, loop = false) => {
         if (!audioElement || !src) return;
-
-        if (isAudioPlaying) {
-          stopAlarmSound();
-        }
-
-        setIsAudioPlaying(true);
         
+        stopAlarmSound();
+
         audioElement.pause();
         audioElement.src = src;
         audioElement.loop = loop;
         audioElement.load();
 
-        audioElement.oncanplay = () => {
-            if (document.body.contains(audioElement)) {
-                audioElement.play().catch(e => {
-                   setIsAudioPlaying(false);
-                });
-            } else {
-                setIsAudioPlaying(false);
-            }
-        };
-
-        audioElement.onerror = () => {
-            setIsAudioPlaying(false);
-        };
-    }, [isAudioPlaying, stopAlarmSound]);
+        if (document.body.contains(audioElement)) {
+            audioElement.play().catch(e => {
+                console.error("Audio playback error:", e);
+            });
+        }
+    }, [stopAlarmSound]);
 
     const playAlarmSound = useCallback((alarm: Alarm) => {
         let soundSrc = '';
@@ -517,6 +503,7 @@ export default function Home() {
             playAudio(audioRef.current, soundSrc, true);
         }
     }, [playAudio]);
+
 
   const handleSnooze = (minutes: number) => {
     if (!activeAlarm) return;
@@ -564,8 +551,8 @@ export default function Home() {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      if (activeAlarm) return;
       const now = new Date();
-      if (activeAlarm || isAudioPlaying) return;
       
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const dueAlarmIndex = alarms.findIndex(alarm => alarm.time === currentTime);
@@ -586,7 +573,7 @@ export default function Home() {
             previewAudioRef.current.currentTime = 0;
         }
     };
-  }, [alarms, setAlarms, activeAlarm, stopAlarmSound, playAlarmSound, isAudioPlaying]);
+  }, [alarms, setAlarms, activeAlarm, stopAlarmSound, playAlarmSound]);
   
   const TaskForm = ({ onFinished, task }: { onFinished: (values: z.infer<typeof taskSchema>) => void, task: Task | null }) => {
     const defaultDeadline = task ? parseISO(task.deadline) : new Date();
@@ -1053,3 +1040,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
