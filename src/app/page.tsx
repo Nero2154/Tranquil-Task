@@ -153,8 +153,8 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const snoozeAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-
 
   const [isMounted, setIsMounted] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState("default");
