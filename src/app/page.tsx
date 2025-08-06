@@ -132,10 +132,7 @@ const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
     { name: "blue", value: "217 91% 60%", foreground: "217 91% 95%" }, // Blue
 ];
 
-let snoozeAudio: HTMLAudioElement | null = null;
-if (typeof window !== 'undefined') {
-    snoozeAudio = new Audio();
-}
+let isAudioPlaying = false;
 
 export default function Home() {
   const [language, setLanguage] = useLocalStorage<Language>("language", "english");
@@ -155,8 +152,9 @@ export default function Home() {
   const [activeAlarm, setActiveAlarm] = useState<Alarm | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const snoozeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
 
   const [isMounted, setIsMounted] = useState(false);
@@ -167,8 +165,9 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== "undefined") {
-      previewAudioRef.current = new Audio();
       audioRef.current = new Audio();
+      snoozeAudioRef.current = new Audio();
+      previewAudioRef.current = new Audio();
       
       if ("Notification" in window) {
         setNotificationPermission(Notification.permission);
@@ -466,43 +465,57 @@ export default function Home() {
     }
   };
   
-  const stopAlarmSound = useCallback(() => {
-    if (audioRef.current && !audioRef.current.paused) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    if (snoozeAudio && !snoozeAudio.paused) {
-      snoozeAudio.pause();
-      snoozeAudio.currentTime = 0;
-    }
-  }, []);
-
-  const playAlarmSound = useCallback((alarm: Alarm) => {
-    if (!audioRef.current) return;
-    
-    let soundSrc = '';
-    if (alarm.sound === 'custom' && alarm.customSoundDataUri) {
-      soundSrc = alarm.customSoundDataUri;
-    } else if (alarm.sound !== 'custom') {
-        soundSrc = presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
-    }
-    
-    if (soundSrc) {
-        audioRef.current.pause();
-        audioRef.current.src = soundSrc;
-        audioRef.current.load();
-        audioRef.current.loop = true;
-
-        if (document.body.contains(audioRef.current)) {
-            const playPromise = audioRef.current.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(() => {
-                    // Ignore errors from race conditions
-                });
-            }
+    const stopAlarmSound = useCallback(() => {
+        if (audioRef.current && !audioRef.current.paused) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
         }
-    }
-  }, []);
+        if (snoozeAudioRef.current && !snoozeAudioRef.current.paused) {
+            snoozeAudioRef.current.pause();
+            snoozeAudioRef.current.currentTime = 0;
+        }
+    }, []);
+
+    const playAudio = useCallback((audioElement: HTMLAudioElement | null, src: string, loop = false) => {
+        if (!audioElement || !src || isAudioPlaying) return;
+
+        isAudioPlaying = true;
+        
+        audioElement.pause();
+        audioElement.src = src;
+        audioElement.loop = loop;
+        audioElement.load();
+
+        audioElement.oncanplay = () => {
+            if (document.body.contains(audioElement)) {
+                audioElement.play().catch(e => {
+                    console.error("Audio play error:", e);
+                }).finally(() => {
+                    isAudioPlaying = false;
+                });
+            } else {
+                isAudioPlaying = false;
+            }
+        };
+
+        audioElement.onerror = () => {
+            console.error("Audio failed to load.");
+            isAudioPlaying = false;
+        };
+    }, []);
+
+    const playAlarmSound = useCallback((alarm: Alarm) => {
+        let soundSrc = '';
+        if (alarm.sound === 'custom' && alarm.customSoundDataUri) {
+            soundSrc = alarm.customSoundDataUri;
+        } else if (alarm.sound !== 'custom') {
+            soundSrc = presetSounds[alarm.sound as Exclude<AlarmSound, 'custom'>];
+        }
+        
+        if (soundSrc) {
+            playAudio(audioRef.current, soundSrc, true);
+        }
+    }, [playAudio]);
 
   const handleSnooze = (minutes: number) => {
     if (!activeAlarm) return;
@@ -532,19 +545,14 @@ export default function Home() {
   
       sarcasticAlarmSnooze({ alarmDescription: `${originalAlarm.description} (in ${language})` })
         .then(res => {
-          if (snoozeAudio) {
-            snoozeAudio.pause();
-            snoozeAudio.src = res.audio;
-            snoozeAudio.load();
-            if (document.body.contains(snoozeAudio)) {
-              snoozeAudio.play().catch(() => {});
-            }
+          if (res.audio) {
+            playAudio(snoozeAudioRef.current, res.audio, false);
           }
         })
         .catch(() => {
           toast({ title: "Error", description: "Failed to play snooze joke", variant: "destructive" });
         });
-    }, 100);
+    }, 200);
   };
   
   const handleDismiss = () => {
@@ -556,17 +564,18 @@ export default function Home() {
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
-      if (activeAlarm || (audioRef.current && !audioRef.current.paused)) return; 
+      if (activeAlarm || isAudioPlaying) return;
       
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const dueAlarm = alarms.find(alarm => alarm.time === currentTime);
+      const dueAlarmIndex = alarms.findIndex(alarm => alarm.time === currentTime);
       
-      if(dueAlarm) {
+      if(dueAlarmIndex > -1) {
+        const dueAlarm = alarms[dueAlarmIndex];
         setActiveAlarm(dueAlarm);
         playAlarmSound(dueAlarm);
-        setAlarms(alarms.filter(a => a.id !== dueAlarm.id));
+        setAlarms(currentAlarms => currentAlarms.filter((_, index) => index !== dueAlarmIndex));
       }
-    }, 1000 * 10);
+    }, 1000);
     
     return () => {
         clearInterval(interval);
@@ -879,7 +888,7 @@ export default function Home() {
             <h1 className="text-xl md:text-2xl font-bold font-headline">{t.appName}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {(snoozeAudio && !snoozeAudio.paused) && (
+            {(snoozeAudioRef.current && !snoozeAudioRef.current.paused) && (
                 <Button variant="destructive" onClick={stopAlarmSound} className="rounded-full shadow-md">
                     <MicOff className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Stop Jokes</span>
                 </Button>
@@ -1043,7 +1052,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    
