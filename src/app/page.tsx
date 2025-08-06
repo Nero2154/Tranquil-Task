@@ -132,8 +132,6 @@ const themeColors: { name: ThemeColor; value: string; foreground: string }[] = [
     { name: "blue", value: "217 91% 60%", foreground: "217 91% 95%" }, // Blue
 ];
 
-let isAudioPlaying = false;
-
 export default function Home() {
   const [language, setLanguage] = useLocalStorage<Language>("language", "english");
   const [theme, setTheme] = useLocalStorage<ThemeColor>("theme", "default");
@@ -155,6 +153,7 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const snoozeAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
 
 
   const [isMounted, setIsMounted] = useState(false);
@@ -474,12 +473,17 @@ export default function Home() {
             snoozeAudioRef.current.pause();
             snoozeAudioRef.current.currentTime = 0;
         }
+        setIsAudioPlaying(false);
     }, []);
 
     const playAudio = useCallback((audioElement: HTMLAudioElement | null, src: string, loop = false) => {
-        if (!audioElement || !src || isAudioPlaying) return;
+        if (!audioElement || !src) return;
 
-        isAudioPlaying = true;
+        if (isAudioPlaying) {
+          stopAlarmSound();
+        }
+
+        setIsAudioPlaying(true);
         
         audioElement.pause();
         audioElement.src = src;
@@ -489,20 +493,17 @@ export default function Home() {
         audioElement.oncanplay = () => {
             if (document.body.contains(audioElement)) {
                 audioElement.play().catch(e => {
-                    console.error("Audio play error:", e);
-                }).finally(() => {
-                    isAudioPlaying = false;
+                   setIsAudioPlaying(false);
                 });
             } else {
-                isAudioPlaying = false;
+                setIsAudioPlaying(false);
             }
         };
 
         audioElement.onerror = () => {
-            console.error("Audio failed to load.");
-            isAudioPlaying = false;
+            setIsAudioPlaying(false);
         };
-    }, []);
+    }, [isAudioPlaying, stopAlarmSound]);
 
     const playAlarmSound = useCallback((alarm: Alarm) => {
         let soundSrc = '';
@@ -585,7 +586,7 @@ export default function Home() {
             previewAudioRef.current.currentTime = 0;
         }
     };
-  }, [alarms, setAlarms, activeAlarm, stopAlarmSound, playAlarmSound]);
+  }, [alarms, setAlarms, activeAlarm, stopAlarmSound, playAlarmSound, isAudioPlaying]);
   
   const TaskForm = ({ onFinished, task }: { onFinished: (values: z.infer<typeof taskSchema>) => void, task: Task | null }) => {
     const defaultDeadline = task ? parseISO(task.deadline) : new Date();
