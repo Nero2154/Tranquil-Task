@@ -26,7 +26,6 @@ import {
   Clock,
   Mail,
   PlayCircle,
-  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,7 +71,6 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { prioritizeTasks } from "@/ai/flows/prioritize-tasks";
 import { motivateTaskCompletion } from "@/ai/flows/motivate-task-completion";
 import { sarcasticAlarmSnooze } from "@/ai/flows/sarcastic-alarm-snooze";
-import { generateImageForTask } from "@/ai/flows/generate-image-for-task";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -110,7 +108,6 @@ const taskSchema = z.object({
   deadlineTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"),
   priority: z.enum(["Low", "Medium", "High"]),
   duration: z.string().optional(),
-  imageDataUri: z.string().optional(),
 });
 
 const alarmSchema = z.object({
@@ -313,7 +310,6 @@ export default function Home() {
             ...values, 
             deadline: deadline.toISOString(),
             duration: values.duration ? parseInt(values.duration, 10) : undefined,
-             imageDataUri: values.imageDataUri,
         };
         setTasks(tasks.map(t => t.id === editingTask.id ? updatedTask : t));
         toast({ title: "Task updated!" });
@@ -327,7 +323,6 @@ export default function Home() {
           priority: values.priority,
           completed: false,
           duration: values.duration ? parseInt(values.duration, 10) : undefined,
-          imageDataUri: values.imageDataUri,
         };
         setTasks([...tasks, newTask]);
         toast({
@@ -569,34 +564,8 @@ export default function Home() {
         deadlineDate: defaultDeadline,
         deadlineTime: format(defaultDeadline, 'HH:mm'),
         duration: task?.duration?.toString() || "",
-        imageDataUri: task?.imageDataUri || "",
       },
     });
-
-    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-    const descriptionValue = form.watch('description');
-    const imageValue = form.watch('imageDataUri');
-
-    const handleGenerateImage = async () => {
-      if (!descriptionValue) {
-        toast({ title: "Please enter a description first.", variant: 'destructive' });
-        return;
-      }
-      setIsGeneratingImage(true);
-      try {
-        const result = await generateImageForTask({ taskDescription: descriptionValue });
-        if (result.imageDataUri) {
-          form.setValue('imageDataUri', result.imageDataUri);
-          toast({ title: "Image generated successfully!" });
-        } else {
-          toast({ title: "Failed to generate image.", variant: 'destructive' });
-        }
-      } catch (error) {
-        toast({ title: "AI Error", description: "Could not generate image.", variant: "destructive" });
-      } finally {
-        setIsGeneratingImage(false);
-      }
-    };
 
     return (
       <Form {...form}>
@@ -607,26 +576,6 @@ export default function Home() {
           <FormField control={form.control} name="description" render={({ field }) => (
             <FormItem><FormLabel>{t.description}</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
           )} />
-           <div className="flex items-center gap-2">
-              <Button type="button" onClick={handleGenerateImage} disabled={isGeneratingImage || !descriptionValue} className="flex-grow">
-                <ImageIcon className="mr-2 h-4 w-4" />
-                {isGeneratingImage ? "Generating..." : "Generate Image with AI"}
-              </Button>
-           </div>
-            {imageValue && (
-              <div className="relative w-full aspect-video rounded-md overflow-hidden border">
-                <Image src={imageValue} alt="Generated task image" layout="fill" objectFit="cover" />
-                 <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 h-6 w-6"
-                    onClick={() => form.setValue('imageDataUri', '')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-              </div>
-            )}
            <div className="grid grid-cols-2 gap-4">
             <FormField control={form.control} name="deadlineDate" render={({ field }) => (
               <FormItem className="flex flex-col"><FormLabel>{t.deadline}</FormLabel>
@@ -801,11 +750,6 @@ export default function Home() {
       </div>
       
       <div className="flex items-center flex-shrink-0">
-          {task.imageDataUri && (
-              <div className="relative w-16 h-16 rounded-md overflow-hidden mr-2">
-                <Image src={task.imageDataUri} alt={task.name} layout="fill" objectFit="cover" />
-              </div>
-          )}
           <div className="flex flex-col">
               <Button variant="ghost" size="icon" onClick={() => openEditTaskDialog(task)}><Edit className="h-4 w-4 text-muted-foreground" /></Button>
               <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
