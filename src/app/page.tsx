@@ -431,6 +431,13 @@ export default function Home() {
         }
         return task;
       });
+
+      updatedTasks.forEach(task => {
+        if (isToday(parseISO(task.deadline))) {
+            scheduleNotification(task);
+        }
+      });
+
       setTasks(updatedTasks);
       toast({
         title: t.toastPrioritized,
