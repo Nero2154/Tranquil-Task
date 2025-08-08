@@ -26,6 +26,7 @@ import {
   Clock,
   Mail,
   PlayCircle,
+  BellRing,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -944,24 +945,32 @@ export default function Home() {
         </div>
       </main>
       
-      <AlertDialog open={!!activeAlarm} onOpenChange={(open) => !open && handleDismiss()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t.alarmTitle}</AlertDialogTitle>
-            <AlertDialogDescriptionComponent>
-              {activeAlarm?.description}
-            </AlertDialogDescriptionComponent>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-col gap-2">
-             <Button variant="outline" onClick={handleDismiss}>{t.dismiss}</Button>
-             <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={() => handleSnooze(5)} disabled={isLoading}>{t.snooze} 5 min</Button>
-                <Button onClick={() => handleSnooze(10)} disabled={isLoading}>{t.snooze} 10 min</Button>
-                <Button onClick={() => handleSnooze(15)} disabled={isLoading}>{t.snooze} 15 min</Button>
+       {activeAlarm && (
+        <div 
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm"
+          style={{
+            backgroundColor: `hsl(var(--background) / 0.8)`,
+            '--tw-gradient-from': 'hsl(var(--primary) / 0.6)',
+            '--tw-gradient-to': 'hsl(var(--background) / 0.6)',
+          } as React.CSSProperties}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-[--tw-gradient-from] to-[--tw-gradient-to] opacity-80"></div>
+          <div className="relative z-10 flex flex-col items-center justify-center text-center p-8 rounded-lg">
+             <BellRing className="h-24 w-24 mb-6 text-primary animate-pulse" />
+             <h1 className="text-4xl font-bold text-foreground mb-2">{t.alarmTitle}</h1>
+             <p className="text-lg text-muted-foreground mb-8 max-w-md">{activeAlarm.description}</p>
+             
+             <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
+                <Button variant="outline" onClick={handleDismiss} className="w-full h-14 text-lg">{t.dismiss}</Button>
              </div>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+             <div className="flex flex-col sm:flex-row gap-4 mt-4 w-full max-w-sm">
+                <Button onClick={() => handleSnooze(5)} disabled={isLoading} className="flex-1 h-12">{t.snooze} 5 min</Button>
+                <Button onClick={() => handleSnooze(10)} disabled={isLoading} className="flex-1 h-12">{t.snooze} 10 min</Button>
+                <Button onClick={() => handleSnooze(15)} disabled={isLoading} className="flex-1 h-12">{t.snooze} 15 min</Button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
